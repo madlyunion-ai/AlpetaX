@@ -1,0 +1,123 @@
+@use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
+
+.table {
+  width: 100%;
+  overflow: auto;
+  border: 1px solid var(--color-blue-200);
+  border-radius: $radius-sm;
+  background-color: var(--color-white-100p);
+  isolation: isolate;
+
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    padding: $spacing-md;
+    background-color: var(--color-blue-100);
+    color: var(--color-blue-800);
+    @include typography(b4);
+    z-index: 1;
+  }
+
+  tbody td {
+    padding: $spacing-lg $spacing-xl;
+    border-bottom: 1px solid var(--color-blue-100);
+    color: var(--color-gray-700);
+    transition: all 0.2s ease;
+    @include typography(b5);
+  }
+  tbody tr {
+    &:hover {
+      td {
+        background: var(--color-blue-100);
+      }
+    }
+    &.selected {
+      td {
+        background: var(--color-blue-200);
+      }
+    }
+    &.disabled {
+      td {
+        color: var(--color-gray-300) !important;
+        background: var(--color-gray-50);
+      }
+      &.active {
+        td {
+          color: #a6debd !important;
+          background: #ebfaf1;
+        }
+      }
+      &.warning {
+        td {
+          color: #f3e0e0 !important;
+          background: var(--red-5);
+        }
+      }
+    }
+    &.active {
+      td {
+        color: #5e9e77;
+        background: #ebfaf1;
+      }
+      &:hover {
+        td {
+          background-color: #c6ead5;
+        }
+      }
+    }
+    &.warning {
+      td {
+        color: var(--red-2);
+        background: var(--red-5);
+      }
+      &:hover {
+        td {
+          background-color: var(--red-4);
+        }
+      }
+    }
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  thead th:first-child {
+    border-top-left-radius: $radius-xs;
+  }
+  thead th:last-child {
+    border-top-right-radius: $radius-xs;
+  }
+  tbody tr:last-child td:first-child {
+    border-bottom-left-radius: $radius-xs;
+  }
+  tbody tr:last-child td:last-child {
+    border-bottom-right-radius: $radius-xs;
+  }
+
+  tbody tr:hover {
+    background-color: var(--color-surface);
+  }
+
+  &-align-left {
+    text-align: left;
+  }
+
+  &-align-center {
+    text-align: center;
+  }
+
+  &-align-right {
+    text-align: right;
+  }
+  .text-primary {
+    color: var(--color-primary);
+  }
+}

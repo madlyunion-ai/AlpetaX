@@ -1,0 +1,63 @@
+@use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
+
+.accordion {
+  border-radius: $radius-xs;
+  border: 1px solid var(--color-blue-200);
+  background: var(--color-white-100p);
+  transition: all 0.3s ease;
+  &.is-open {
+    .accordion-header {
+      border-radius: $radius-xs $radius-xs 0 0;
+      &:hover {
+        background: var(--color-white-100p);
+      }
+    }
+  }
+  &-header {
+    @include flex(row, space-between, center, $spacing-sm);
+    width: 100%;
+    padding: $spacing-md $spacing-xl;
+    text-align: left;
+    color: var(--color-blue-600);
+    border-radius: $radius-xs;
+    transition: all 0.3s ease;
+    @include typography(b4);
+    &:hover {
+      background: var(--color-blue-50);
+    }
+    .icon {
+      background: var(--color-gray-300);
+      transition: all 0.3s ease;
+      &.open {
+        transform: rotate(180deg);
+      }
+    }
+  }
+
+  &-body-slide {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition:
+      grid-template-rows 0.25s ease,
+      opacity 0.25s ease;
+
+    > .accordion-body {
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    &.is-open {
+      grid-template-rows: 1fr;
+      opacity: 1;
+      .accordion-body {
+        overflow: inherit;
+      }
+    }
+  }
+  &-body-content {
+    padding: $spacing-xl;
+    border-radius: 0 0 $radius-xs $radius-xs;
+  }
+}

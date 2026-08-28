@@ -1,0 +1,112 @@
+@use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
+
+.device-list-item {
+  position: relative;
+  @include flex(row, flex-start, flex-start, $spacing-2xl);
+  width: 100%;
+  padding: $spacing-lg;
+  border: 1px solid var(--color-blue-100);
+  background: var(--color-blue-100);
+  text-align: left;
+  border-radius: $radius-xs;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  &:hover {
+    padding-left: $spacing-2xl;
+  }
+  .thumbnail {
+    position: relative;
+    @include flex(row, center, center);
+    width: 80px;
+    height: 80px;
+    flex-shrink: 0;
+    border-radius: $radius-xs;
+    border: 1px solid var(--color-blue-100);
+    background-color: var(--color-black-80p);
+    overflow: hidden;
+    img {
+      @include image-cover;
+    }
+    .status {
+      @include flex(row, center, center);
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      height: 24px;
+      padding: 0 $spacing-sm;
+      color: var(--color-white-100p);
+      background: #d93e39;
+      border-radius: $radius-full;
+      @include typography(b6);
+    }
+    .btn-play {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+  }
+  .item-body {
+    display: grid;
+    .item-id {
+      margin-bottom: $spacing-xxs;
+      @include typography(b6);
+      color: var(--color-gray-500);
+    }
+    .name {
+      margin-bottom: $spacing-sm;
+      @include typography(b4);
+      color: var(--color-gray-800);
+    }
+    .device-item-badge {
+      @include flex(row, flex-start, flex-start, $spacing-sm);
+    }
+  }
+  &.selected {
+    border: 1px solid var(--color-blue-100);
+    background-color: var(--color-white-100p);
+    transform: translateX(-$spacing-lg);
+    border-radius: $radius-sm;
+    padding: 0;
+
+    .thumbnail {
+      width: 114px;
+      height: 114px;
+      border: 2px solid var(--color-primary);
+      .btn-play {
+        position: absolute;
+        left: calc(50% - 20px);
+        top: calc(50% - 20px);
+        opacity: 1;
+        visibility: visible;
+        pointer-events: inherit;
+        width: 40px;
+        height: 40px;
+        border-radius: $radius-full;
+        background: var(--color-primary);
+      }
+    }
+    .item-body {
+      padding: $spacing-lg 0;
+      .item-id {
+        margin-bottom: $spacing-sm;
+        color: var(--color-blue-500);
+      }
+      .name {
+        color: var(--color-blue-800);
+      }
+    }
+  }
+
+  &-actions {
+    @include flex(row, flex-start, center, 2px);
+    position: absolute;
+    right: $spacing-2xl;
+    top: $spacing-lg;
+    .btn-action {
+      width: 24px;
+      height: 24px;
+    }
+  }
+}

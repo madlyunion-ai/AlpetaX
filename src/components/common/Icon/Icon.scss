@@ -1,0 +1,216 @@
+.icon {
+  display: inline-block;
+  flex-shrink: 0;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.icon-chevron-left {
+  width: 20px;
+  height: 20px;
+  mask-image: url('@/assets/icons/ic-chevron-left.svg');
+  background: var(--color-gray-300);
+}
+.icon-chevron-right {
+  width: 20px;
+  height: 20px;
+  mask-image: url('@/assets/icons/ic-chevron-right.svg');
+  background: var(--color-gray-300);
+}
+.icon-chevron-down {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-chevron-down.svg');
+  background: var(--color-blue-500);
+}
+.icon-chevron-up {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-chevron-up.svg');
+  background: var(--color-blue-500);
+}
+.icon-people {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-people.svg');
+  background: var(--color-primary);
+}
+.icon-plus {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-plus.svg');
+  background: var(--color-white-100p);
+}
+.icon-shield {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-shield.svg');
+  background: var(--color-primary);
+}
+.icon-gps {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-gps.svg');
+  background: var(--color-primary);
+}
+.icon-vms {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-vms.svg');
+  background: var(--color-primary);
+}
+.icon-user {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-user.svg');
+  background: var(--color-primary);
+}
+.icon-terminal {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-terminal.svg');
+  background: var(--color-primary);
+}
+.icon-door {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-door.svg');
+  background: var(--color-primary);
+}
+.icon-resource {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-resource.svg');
+  background: var(--color-primary);
+}
+.icon-close-issue {
+  width: 8px;
+  height: 8px;
+  mask-image: url('@/assets/icons/ic-close-issue.svg');
+  background: var(--color-white-100p);
+}
+.icon-go-issue {
+  width: 8px;
+  height: 8px;
+  mask-image: url('@/assets/icons/Ic-go-issue.svg');
+  background: var(--color-white-100p);
+}
+.icon-bell {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-bell.svg');
+  background: var(--color-white-100p);
+}
+.icon-set {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-set.svg');
+  background: var(--color-white-100p);
+}
+.icon-search {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-search.svg');
+  background: var(--color-blue-600);
+}
+.icon-cam {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-cam.svg');
+  background: var(--color-blue-400);
+}
+.icon-list {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-list.svg');
+  background: var(--color-blue-400);
+}
+.icon-arrow-up {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-arrow-up.svg');
+  background: var(--color-white-100p);
+}
+.icon-question {
+  width: 16px;
+  height: 20px;
+  mask-image: url('@/assets/icons/ic-question.svg');
+  background: var(--color-primary);
+}
+.icon-close {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-close.svg');
+  background: var(--color-primary);
+}
+.icon-play {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-play.svg');
+  background: var(--color-white-100p);
+}
+.icon-expand {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-expand.svg');
+  background: var(--color-primary);
+}
+.icon-option {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-option.svg');
+  background: var(--color-primary);
+}
+.icon-minus-circle {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-minus-circle.svg');
+  background: var(--color-primary);
+}
+.icon-plus-circle {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-plus-circle.svg');
+  background: var(--color-primary);
+}
+.icon-zoom-plus {
+  width: 24px;
+  height: 24px;
+  mask-image: url('@/assets/icons/ic-zoom-plus.svg');
+  background: var(--color-primary);
+}
+.icon-live-cam {
+  width: 20px;
+  height: 20px;
+  mask-image: url('@/assets/icons/ic-live-cam.svg');
+  background: var(--color-white-100p);
+}
+.icon-arrow-tree {
+  width: 22px;
+  height: 22px;
+  mask-image: url('@/assets/icons/ic-arrow-tree.svg');
+  background: var(--color-blue-400);
+}
+.icon-play-line {
+  width: 72px;
+  height: 72px;
+  mask-image: url('@/assets/icons/ic-play-line.svg');
+  background: var(--color-white-100p);
+}
+.icon-tree-terminal {
+  width: 16px;
+  height: 14px;
+  mask-image: url('@/assets/icons/ic-tree-terminal.svg');
+  background: var(--color-primary);
+}
+.icon-tree-cctv {
+  width: 16px;
+  height: 14px;
+  mask-image: url('@/assets/icons/ic-tree-cctv.svg');
+  background: var(--color-primary);
+}

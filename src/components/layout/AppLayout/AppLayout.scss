@@ -1,0 +1,16 @@
+@use '@/styles/variables' as *;
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--color-blue-50);
+  // max-width: 1920px;
+  margin: 0 auto;
+  &-main {
+    flex: 1;
+    min-width: 0;
+    height: 100vh;
+    padding: $spacing-4xl;
+    overflow-y: auto;
+  }
+}

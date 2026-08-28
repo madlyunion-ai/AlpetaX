@@ -1,0 +1,254 @@
+@use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
+
+.map-page {
+  min-height: 100%;
+  @include flex(row, flex-start, flex-start, $spacing-lg);
+
+  .device-map-area {
+    width: 60%;
+    flex: none;
+    .map-header {
+      @include flex(row, flex-start, center, $spacing-lg);
+      margin-bottom: $spacing-xl;
+      .greeting {
+        @include flex(row, flex-start, center, $spacing-lg);
+        &-hello {
+          @include typography(h4);
+          color: var(--color-gray-800);
+        }
+        &-name {
+          @include typography(h4);
+          color: var(--color-primary);
+          font-style: normal;
+        }
+        &-desc {
+          @include typography(s1);
+          color: var(--color-blue-400);
+        }
+      }
+      .btn-area {
+        @include flex(row, flex-start, center, $spacing-sm);
+        margin-left: auto;
+        .btn-bell,
+        .btn-setting {
+          position: relative;
+          width: 36px;
+          height: 36px;
+          border-radius: $radius-xs;
+          background: var(--color-blue-400);
+          &:hover {
+            background: var(--color-blue-500);
+          }
+        }
+        .btn-bell.has-new {
+          &:before {
+            content: '';
+            position: absolute;
+            right: -3px;
+            top: -3px;
+            width: 12px;
+            height: 12px;
+            background: var(--red-1);
+            border-radius: $radius-full;
+          }
+        }
+      }
+    }
+
+    .chat-area {
+      position: relative;
+    }
+
+    .chat-box {
+      width: 100%;
+      padding: $spacing-xl;
+      background: var(--color-white-100p);
+      border-radius: $radius-lg;
+      .chat-input {
+        @include flex(row, flex-start, flex-start, $spacing-sm);
+        margin-bottom: $spacing-3xl;
+        textarea {
+          width: 100%;
+          height: 40px;
+          resize: none;
+          outline: none;
+          @include typography(b3);
+          color: var(--color-black-100p);
+          &::placeholder {
+            color: var(--color-blue-500);
+          }
+        }
+      }
+      .chat-suggestions {
+        @include flex(row, space-between, flex-start, $spacing-sm);
+        .suggestion-items {
+          @include flex(row, flex-start, flex-start, $spacing-lg);
+          button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 40px;
+            padding: 0 $spacing-xl;
+            color: var(--color-blue-500);
+            border: 1px solid var(--color-blue-300);
+            background: var(--color-white-100p);
+            border-radius: $radius-full;
+            @include typography(b3);
+            &:hover {
+              background: var(--color-blue-50);
+              border-color: var(--color-primary);
+              color: var(--color-primary);
+            }
+          }
+        }
+      }
+      .dot {
+        @include flex(row, center, center, 2px);
+        width: 40px;
+        height: 40px;
+        margin-left: auto;
+        background: var(--color-blue-100);
+        border-radius: $radius-full;
+        span {
+          display: inline-block;
+          width: 5px;
+          height: 5px;
+          background: var(--color-blue-300);
+          border-radius: $radius-full;
+        }
+      }
+    }
+  }
+
+  .map-panel {
+    @include flex(row, flex-start, flex-start);
+    height: 682px;
+    margin-top: $spacing-3xl;
+    background: var(--color-blue-100);
+    border-radius: $radius-md;
+  }
+
+  .device-list-area {
+    flex: 1;
+    min-width: 0;
+    .list-top {
+      @include flex(row, flex-start, center, $spacing-sm);
+      padding-left: $spacing-lg;
+      margin-bottom: $spacing-xl;
+      .select {
+        width: auto;
+      }
+      .text-input-box {
+        flex: 1;
+      }
+      .list-toggle {
+        @include flex(row, flex-start, center);
+        padding: 0 $spacing-xxs;
+        border: 1px solid var(--color-blue-200);
+        background: var(--color-blue-50);
+        border-radius: $radius-sm;
+        .btn-toggle {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 36px;
+          height: 38px;
+          &:not(:first-child) {
+            border-left: 1px solid var(--color-blue-200);
+          }
+          &.is-active {
+            .icon {
+              background: var(--color-primary);
+            }
+          }
+        }
+      }
+    }
+    .device-list-table {
+      padding-left: 12px;
+      .model {
+        @include typography(c2);
+      }
+      .status-on,
+      .status-off {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: $radius-full;
+      }
+      .status-on {
+        background: #7bca4a;
+      }
+      .status-off {
+        background: #d93e39;
+      }
+    }
+  }
+  .btn-chat-send {
+    width: 40px;
+    height: 40px;
+    background: var(--color-primary);
+    border-radius: $radius-full;
+  }
+}
+
+.map-canvas {
+  @include flex(column, flex-start, flex-start);
+  flex: 1;
+  height: 100%;
+  .device-panel {
+    overflow: auto;
+    width: 100%;
+    flex: 1;
+    padding: $spacing-4xl;
+    .title {
+      display: block;
+      margin-bottom: $spacing-xl;
+      @include typography(s1);
+      color: var(--color-primary);
+    }
+    .device-items {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 120px);
+      gap: $spacing-xl;
+      .item {
+        @include flex(column, center, flex-start);
+        position: relative;
+        overflow: hidden;
+        border-radius: $radius-sm;
+        background: var(--color-white-100p);
+        .btn-option {
+          margin-left: auto;
+          .icon {
+            background: var(--color-primary);
+          }
+        }
+        &.is-selected {
+          border: 2px solid var(--color-primary);
+          .btn-cam {
+            background: var(--color-primary);
+          }
+        }
+      }
+      .figure {
+        @include flex(column, center, center, $spacing-lg);
+        width: 100%;
+        padding: $spacing-xl;
+        aspect-ratio: 1 /1.2;
+        .caption {
+          @include typography(b4);
+          color: var(--color-gray-700);
+        }
+      }
+      .btn-cam {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: $spacing-xs;
+        background-color: #567cea;
+      }
+    }
+  }
+}

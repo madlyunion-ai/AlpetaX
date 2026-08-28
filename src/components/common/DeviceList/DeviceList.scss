@@ -1,0 +1,13 @@
+@use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
+
+.device-list {
+  width: 100%;
+  height: 824px;
+  padding-left: $spacing-lg;
+  overflow: auto;
+  @include flex(column, flex-start, flex-start, $spacing-lg);
+  .item {
+    width: 100%;
+  }
+}

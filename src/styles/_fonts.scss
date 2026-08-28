@@ -1,0 +1,31 @@
+// 프로젝트에서 실제로 쓰는 굵기(400/500/600)만 로드.
+// 다른 굵기(Thin/Light/Bold 등) 파일은 assets/fonts에 있지만 타이포 스케일에서 안 쓰므로 미포함.
+@font-face {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src:
+    url('../assets/fonts/Pretendard-Regular.woff2') format('woff2'),
+    url('../assets/fonts/Pretendard-Regular.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src:
+    url('../assets/fonts/Pretendard-Medium.woff2') format('woff2'),
+    url('../assets/fonts/Pretendard-Medium.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src:
+    url('../assets/fonts/Pretendard-SemiBold.woff2') format('woff2'),
+    url('../assets/fonts/Pretendard-SemiBold.woff') format('woff');
+}

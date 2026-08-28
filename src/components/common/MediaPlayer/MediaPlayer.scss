@@ -1,0 +1,18 @@
+@use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
+
+.media-player {
+  .thumbnail {
+    position: relative;
+    width: 800px;
+    aspect-ratio: 4 / 3;
+    img {
+      @include image-cover;
+    }
+    .button {
+      position: absolute;
+      left: calc(50% - 36px);
+      top: calc(50% - 36px);
+    }
+  }
+}

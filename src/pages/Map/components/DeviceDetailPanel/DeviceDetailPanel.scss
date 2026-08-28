@@ -1,0 +1,90 @@
+@use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
+
+.device-detail-panel {
+  @include flex(column, flex-start, stretch, $spacing-xl);
+  overflow: hidden;
+  height: 100%;
+  .panel-header {
+    @include flex(row, flex-start, center, $spacing-sm);
+    flex-shrink: 0;
+    .title {
+      @include typography(s1);
+    }
+  }
+  .panel-body {
+    overflow: auto;
+    flex: 1;
+    .device-info {
+      @include flex(row, flex-start, flex-start, $spacing-lg);
+    }
+    .device-image {
+      width: 200px;
+      flex-shrink: 0;
+      overflow: hidden;
+      border-radius: $radius-sm;
+      .img {
+        background: var(--color-blue-50);
+        @include image-cover;
+      }
+      .btn-live-cam {
+        @include flex(row, center, center, $spacing-xxs);
+        @include typography(btn-medium);
+        width: 100%;
+        padding: $spacing-md $spacing-xl;
+        color: var(--color-white-100p);
+        background: var(--color-primary);
+      }
+    }
+    .device-detail {
+      display: grid;
+      gap: $spacing-lg;
+      div {
+        @include flex(row, space-between, flex-start, $spacing-sm);
+        &.desc {
+          flex-wrap: wrap;
+          dd {
+            width: 100%;
+          }
+        }
+      }
+      dt {
+        @include typography(b3);
+        color: var(--color-blue-600);
+      }
+      dd {
+        @include typography(b4);
+        color: var(--color-blue-700);
+      }
+    }
+    .detail-fields {
+      display: grid;
+      gap: $spacing-xl;
+      margin-top: $spacing-xl;
+      .accordion-body-content {
+        min-height: 180px;
+      }
+    }
+    .form-box {
+      @include flex(row, flex-start, center, $spacing-lg);
+      & + .form-box {
+        margin-top: $spacing-lg;
+      }
+      label {
+        width: 96px;
+        flex-basis: 96px;
+        @include typography(b6);
+        color: var(--color-blue-500);
+      }
+      .select {
+        flex: 1;
+      }
+    }
+  }
+  .button {
+    height: 48px;
+    .icon {
+      background: var(--color-primary);
+    }
+  }
+}

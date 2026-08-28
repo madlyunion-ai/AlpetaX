@@ -1,0 +1,54 @@
+@use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
+
+.theme-toggle {
+  @include flex(row, space-between, flex-start);
+  position: relative;
+  flex-shrink: 0;
+  width: 46px;
+  height: 22px;
+  border: 1px solid var(--color-gray-200);
+  border-radius: 22px;
+  background-color: var(--color-blue-50);
+
+  .theme-toggle-option {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin: -1px;
+    flex-shrink: 0;
+    border: 1px solid transparent;
+    background-color: transparent;
+    border-radius: $radius-full;
+    transition:
+      background-color 0.4s ease,
+      border-color 0.4s ease;
+    cursor: pointer;
+    &:has(:checked) {
+      border-color: var(--color-gray-400);
+      background-color: var(--color-white-100p);
+      .icon {
+        background: var(--color-gray-600);
+      }
+    }
+  }
+
+  .icon {
+    position: relative;
+    width: 12px;
+    height: 12px;
+    border-radius: $radius-full;
+    flex-shrink: 0;
+    background: var(--color-blue-300);
+    transition: color 0.2s ease;
+    z-index: 1;
+    &.icon-light {
+      mask-image: url('@/assets/icons/ic-light.svg');
+    }
+    &.icon-dark {
+      mask-image: url('@/assets/icons/ic-dark.svg');
+    }
+  }
+}

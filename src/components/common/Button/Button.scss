@@ -1,0 +1,103 @@
+@use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: $radius-xs;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  gap: 4px;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+
+  &-only-icon {
+    padding: 0;
+    border: 0 none;
+    background: transparent;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+
+  &-small {
+    height: 34px;
+    padding: 0 14px;
+    @include typography(btn-small);
+  }
+  &-medium {
+    height: 32px;
+    padding: 0 $spacing-xl;
+    @include typography(btn-medium);
+  }
+  &-large {
+    height: 36px;
+    padding: 0 $spacing-2xl;
+    @include typography(btn-large);
+  }
+  &-full {
+    width: 100%;
+  }
+
+  // ---- variants ----
+  &-primary {
+    border: 1px solid var(--color-primary);
+    background-color: var(--color-primary);
+    color: var(--color-white-100p);
+    &:hover:not(:disabled) {
+      border-color: var(--color-blue-600);
+      background-color: var(--color-blue-600);
+    }
+    &:disabled {
+      border-color: var(--color-blue-200);
+      background-color: var(--color-blue-200);
+      color: var(--color-blue-400);
+    }
+  }
+  &-line {
+    border-color: var(--color-primary);
+    background-color: var(--color-white-100p);
+    color: var(--color-primary);
+
+    &:hover:not(:disabled) {
+      background-color: var(--color-blue-50);
+    }
+    &:disabled {
+      border-color: var(--color-blue-200);
+      background-color: var(--color-blue-200);
+      color: var(--color-blue-400);
+    }
+  }
+
+  &-gray {
+    border-color: var(--color-blue-300);
+    background-color: var(--color-white-100p);
+    color: var(--color-blue-700);
+    &:hover:not(:disabled) {
+      background-color: var(--color-blue-50);
+    }
+    &:disabled {
+      border-color: var(--color-blue-200);
+      background-color: var(--color-blue-200);
+      color: var(--color-blue-400);
+    }
+  }
+
+  &-red {
+    border-color: var(--red-2);
+    background-color: var(--color-white-100p);
+    color: var(--red-2);
+    &:hover:not(:disabled) {
+      background-color: var(--red-4);
+    }
+    &:disabled {
+      border-color: var(--color-blue-200);
+      background-color: var(--color-blue-200);
+      color: var(--color-blue-400);
+    }
+  }
+}

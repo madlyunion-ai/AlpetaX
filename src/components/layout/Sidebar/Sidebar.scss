@@ -1,0 +1,353 @@
+@use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
+
+.sidebar {
+  @include flex(column);
+  position: relative;
+  width: 260px;
+  flex-shrink: 0;
+  height: 100dvh;
+  background-color: var(--color-white-100p);
+  border-right: 1px solid var(--color-border);
+  transition:
+    transform 0.15s ease,
+    margin-right 0.15s ease;
+  will-change: transform, margin-right;
+  &-collapsed {
+    margin-right: -260px;
+    transform: translateX(-100%);
+  }
+  .sidebar-wrapper {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .sidebar-collapse-toggle {
+    @include flex(row, center, center);
+    position: absolute;
+    top: 0;
+    left: 100%;
+    width: 22px;
+    height: 44px;
+    mask: url('@/assets/icons/bg_snb_collapse.svg') no-repeat center center / cover;
+    background: var(--color-white-100p);
+  }
+  .sidebar-header {
+    position: sticky;
+    top: 0;
+    @include flex(row, space-between);
+    padding: $spacing-3xl $spacing-2xl $spacing-2xl;
+    border-bottom: 1px solid var(--color-blue-100);
+    background: var(--color-white-100p);
+    z-index: 10;
+    .logo {
+      display: block;
+      width: 112px;
+      height: 20px;
+      background: url('@/assets/images/Alpeta_logo_03.png') no-repeat center center / cover;
+    }
+  }
+
+  .sidebar-summary {
+    padding: $spacing-2xl $spacing-xl;
+    border-bottom: 1px solid var(--color-blue-100);
+    .sidebar-user-count {
+      @include flex(row, flex-start, center, $spacing-xxs);
+      .value {
+        display: inline-grid;
+        font-variant-numeric: tabular-nums;
+        width: 80px;
+        flex-shrink: 0;
+        @include typography(h4);
+        color: var(--color-primary);
+        > span {
+          grid-area: 1 / 1;
+        }
+        &-sizer {
+          visibility: hidden;
+        }
+      }
+      .add-user {
+        position: relative;
+      }
+      .btn-add-user {
+        display: inline-flex;
+        align-items: center;
+        padding: 0 $spacing-xxs;
+        background: var(--color-primary);
+        border-radius: $radius-lg;
+        .icon {
+          background: var(--color-white-100p);
+          &.icon-people {
+            width: 16px;
+            height: 16px;
+          }
+        }
+        &:hover ~ .badge {
+          opacity: 1;
+          visibility: visible;
+        }
+      }
+      .badge {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: calc(50% - 40px);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+      }
+    }
+
+    .sidebar-device-count {
+      margin-top: 8px;
+      @include flex(row, flex-start, center, $spacing-sm);
+      .cont {
+        @include flex(row, flex-start, center, $spacing-xxs);
+        @include typography(c2);
+        color: var(--color-gray-500);
+        b {
+          display: inline-block;
+          @include typography(b2);
+          color: var(--color-blue-600);
+        }
+      }
+    }
+
+    .sidebar-credential {
+      margin-top: $spacing-xl;
+      .title {
+        @include flex(row, flex-start, center, $spacing-xxs);
+        @include typography(b4);
+        margin-bottom: $spacing-md;
+        color: var(--color-primary);
+      }
+      .credential-bar {
+        display: flex;
+        height: 8px;
+        border-radius: $radius-full;
+        overflow: hidden;
+        background-color: var(--color-gray-100);
+        .credential-segment {
+          position: relative;
+          width: var(--segment-width);
+          border-radius: $radius-xxs;
+          animation-duration: 1.6s;
+          animation-timing-function: ease-in-out;
+          animation-iteration-count: infinite;
+          &:not(:first-child) {
+            margin-left: -$radius-xxs;
+          }
+          &:nth-child(1) {
+            animation-name: credential-relay-0;
+            z-index: 4;
+          }
+          &:nth-child(2) {
+            animation-name: credential-relay-1;
+            z-index: 3;
+          }
+          &:nth-child(3) {
+            animation-name: credential-relay-2;
+            z-index: 2;
+          }
+          &:nth-child(4) {
+            animation-name: credential-relay-3;
+            z-index: 1;
+          }
+        }
+      }
+      .credential-legend {
+        @include flex(column, flex-start, flex-start, $spacing-sm);
+        padding-top: $spacing-sm;
+        padding-bottom: $spacing-xl;
+        li {
+          width: 100%;
+          @include flex(row, space-between, center, $spacing-sm);
+          .legend {
+            @include flex(row, flex-start, center, $spacing-xs);
+            @include typography(b6);
+            color: var(--color-gray-500);
+            &:before {
+              content: '';
+              display: block;
+              width: 6px;
+              height: 6px;
+              border-radius: 2px;
+            }
+            &.legend-primary:before {
+              background-color: var(--color-primary);
+            }
+            &.legend-purple:before {
+              background-color: var(--purple-1);
+            }
+            &.legend-sky:before {
+              background-color: var(--sky-1);
+            }
+            &.legend-gray:before {
+              background-color: var(--color-gray-200);
+            }
+          }
+          .rate {
+            @include typography(b4);
+            color: var(--color-primary);
+          }
+        }
+      }
+      .credential-segment,
+      .credential-dot {
+        &-primary {
+          background-color: var(--color-primary);
+        }
+        &-purple {
+          background-color: var(--purple-1);
+        }
+        &-sky {
+          background-color: var(--sky-1);
+        }
+        &-gray {
+          background-color: var(--color-gray-200);
+        }
+      }
+    }
+  }
+
+  .sidebar-nav {
+    padding: $spacing-2xl $spacing-xl;
+    border-bottom: 1px solid var(--color-blue-100);
+    ul {
+      @include flex(column, flex-start, flex-start, $spacing-xxs);
+      li {
+        width: 100%;
+        .nav-link {
+          @include flex(row, flex-start, flex-start, $spacing-xs);
+          @include typography(s2);
+          padding: $spacing-xs $spacing-lg;
+          width: 100%;
+          border-radius: $spacing-sm;
+          transition: all 0.3s ease;
+          color: var(--color-gray-900);
+          &.nav-link-active {
+            background: var(--color-primary);
+            color: var(--color-white-100p);
+            .icon {
+              background: var(--color-white-100p);
+            }
+          }
+        }
+      }
+    }
+  }
+  .sidebar-title {
+    @include flex(row, flex-start, center, $spacing-xxs);
+    margin-bottom: $spacing-xl;
+    @include typography(b4);
+    color: var(--color-gray-400);
+  }
+  .text-red {
+    @include typography(b4);
+    color: var(--red-2);
+  }
+
+  .sidebar-issues {
+    padding: $spacing-2xl $spacing-xl;
+
+    .issue-card-items {
+      @include flex(column, flex-start, flex-start, $spacing-md);
+      .issue-card {
+        width: 100%;
+        padding: $spacing-sm $spacing-lg;
+        background: var(--red-3);
+        border-radius: $radius-xs;
+        transition: all 0.3s ease;
+        &:hover {
+          background: var(--red-2);
+          .issue-item {
+            .text {
+              color: var(--color-white-100p);
+            }
+          }
+        }
+        .issue-item {
+          @include flex(row, space-between, center, $spacing-sm);
+          .text {
+            @include text-ellipsis;
+            @include typography(c2);
+            color: var(--red-2);
+          }
+          &.issue-status {
+            .text {
+              @include typography(b7);
+            }
+          }
+          .btn-issue-go,
+          .btn-issue-close {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            background: var(--red-2);
+            &:hover {
+              background: var(--red-3);
+              .icon {
+                background-color: var(--red-2);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+@keyframes credential-relay-0 {
+  0% {
+    width: 0%;
+  }
+  15% {
+    width: calc(var(--segment-width) * 1.15 + $radius-xxs);
+  }
+  25%,
+  100% {
+    width: calc(var(--segment-width) + $radius-xxs);
+  }
+}
+
+@keyframes credential-relay-1 {
+  0%,
+  25% {
+    width: 0%;
+  }
+  40% {
+    width: calc(var(--segment-width) * 1.15 + $radius-xxs);
+  }
+  50%,
+  100% {
+    width: calc(var(--segment-width) + $radius-xxs);
+  }
+}
+
+@keyframes credential-relay-2 {
+  0%,
+  50% {
+    width: 0%;
+  }
+  65% {
+    width: calc(var(--segment-width) * 1.15 + $radius-xxs);
+  }
+  75%,
+  100% {
+    width: calc(var(--segment-width) + $radius-xxs);
+  }
+}
+
+@keyframes credential-relay-3 {
+  0%,
+  75% {
+    width: 0%;
+  }
+  90% {
+    width: calc(var(--segment-width) * 1.15 + $radius-xxs);
+  }
+  100% {
+    width: calc(var(--segment-width) + $radius-xxs);
+  }
+}

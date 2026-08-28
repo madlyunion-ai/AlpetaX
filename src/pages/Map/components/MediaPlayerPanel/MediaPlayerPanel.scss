@@ -1,0 +1,48 @@
+@use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
+
+.media-player {
+  &-panel {
+    @include flex(row, flex-start, stretch, $spacing-xl);
+  }
+  &-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    @include flex(column, flex-start, flex-start, $spacing-sm);
+    .device-id {
+      @include typography(b6);
+      color: var(--color-blue-500);
+    }
+    .title {
+      @include typography(h4);
+      color: var(--color-blue-800);
+    }
+    .contents {
+      @include flex(column, flex-start, flex-start);
+      overflow: hidden;
+      width: 100%;
+      flex: 1;
+      .media-player-tabs {
+        @include flex(column, flex-start, flex-start);
+        width: 100%;
+        flex: 1;
+        .tabs-list {
+          flex: none;
+        }
+        .tabs-panel {
+          overflow: hidden;
+          width: 100%;
+          flex: 1;
+          .table {
+            height: 100%;
+            max-height: 530px;
+          }
+        }
+      }
+    }
+  }
+}
+.evt-log-name {
+  gap: $spacing-sm;
+}

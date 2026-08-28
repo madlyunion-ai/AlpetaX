@@ -1,0 +1,25 @@
+@use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
+
+.tabs {
+  &-list {
+    @include flex(row, flex-start, center, $spacing-sm);
+    margin-bottom: $spacing-xl;
+  }
+  &-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: $spacing-md $spacing-xl;
+    @include typography(b3);
+    color: var(--color-blue-400);
+    border: 1px solid var(--color-blue-200);
+    border-radius: $radius-md;
+    background: var(--color-white-100p);
+    transition: all 0.3s ease;
+    &.is-active {
+      color: var(--color-primary);
+      border-color: var(--color-primary);
+    }
+  }
+}

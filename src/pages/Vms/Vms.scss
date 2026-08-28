@@ -1,0 +1,68 @@
+@use '@/styles/variables' as *;
+@use '@/styles/mixins' as *;
+
+.vms-page {
+  @include flex(row, flex-start, flex-start, $spacing-3xl);
+  .vms-filter {
+    position: sticky;
+    top: 0;
+    width: 188px;
+    padding: $spacing-xl $spacing-2xl;
+    flex-shrink: 0;
+    background: var(--color-white-100p);
+    border-radius: $radius-md;
+    .title {
+      display: block;
+      margin-bottom: $spacing-xl;
+      @include typography(b3);
+      color: var(--color-blue-900);
+    }
+    .filter-items {
+      @include flex(column, flex-start, flex-start, $spacing-md);
+      .button-add-filter {
+        @include typography(b4);
+        height: 40px;
+        .icon {
+          background: var(--color-white-100p);
+        }
+      }
+      .keyword-items-slide {
+        display: grid;
+        grid-template-rows: 0fr;
+        width: 100%;
+        opacity: 0;
+        transition:
+          grid-template-rows 0.25s ease,
+          opacity 0.25s ease;
+
+        > .keyword-items {
+          overflow: hidden;
+          min-height: 0;
+        }
+
+        &.is-open {
+          grid-template-rows: 1fr;
+          opacity: 1;
+        }
+      }
+
+      .keyword-items {
+        @include flex(column, flex-start, flex-start, $spacing-md);
+        .badge {
+          padding-right: 8px;
+          .button {
+            width: 18px;
+            height: 18px;
+            background: var(--color-blue-200);
+            border-radius: $radius-full;
+          }
+        }
+      }
+    }
+  }
+  .thumbnail-grid-list {
+    @include flex(column, flex-start, stretch, $spacing-xl);
+    flex: 1;
+    min-width: 0;
+  }
+}
