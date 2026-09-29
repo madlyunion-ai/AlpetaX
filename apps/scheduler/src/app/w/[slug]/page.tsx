@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { rangeFor, spanAll } from '@/lib/schedule-core/range';
+import { rangeFor } from '@/lib/schedule-core/range';
 import { isLate } from '@/lib/schedule-core/workload';
 import type {
   Membership,
@@ -89,18 +89,18 @@ export default async function WorkspacePage({
     assigneeIds: parseList(one('assignees')),
   };
 
+  const range = rangeFor(view, anchor, scale);
+
   /*
-   * 로드맵만 범위가 다르다. 다른 뷰는 "이 기간" 을 보는 화면이라 창을 잘라
-   * 가져오지만, 로드맵은 "이 팀이 하는 일 전부" 를 보는 화면이다. 기준일
-   * 둘레만 가져오면 그 밖의 일정이 등록돼 있는데도 화면에서 사라진다.
+   * 로드맵만 전체를 가져온다.
    *
-   * 그래서 로드맵은 넉넉한 창으로 한 번 긁어 온 뒤, 실제 데이터가 놓인
-   * 구간으로 축을 다시 잡는다. 질의는 여전히 schedules_in_range 하나다.
+   * 트리의 줄(프로젝트 × 업무구분)은 "무엇이 등록돼 있나" 를 말하는 것이지
+   * "이 기간에 무엇이 있나" 가 아니다. 기간으로 거른 목록으로 줄을 만들면,
+   * 기간을 옮겼을 때 줄이 사라져 등록해 둔 일이 없어진 것처럼 보인다.
+   * 축과 막대는 그대로 기간을 따른다.
    */
-  const isRoadmap = view === 'roadmap';
-  const fetchRange = isRoadmap
-    ? { start: new Date('1970-01-01T00:00:00Z'), end: new Date('2100-01-01T00:00:00Z') }
-    : rangeFor(view, anchor, scale);
+  const wideRange = { start: new Date('1970-01-01T00:00:00Z'), end: new Date('2100-01-01T00:00:00Z') };
+  const fetchRange = view === 'roadmap' ? wideRange : range;
 
   const [{ data: members }, { data: teams }, { data: phases }, { data: projects }, { data: me }] =
     await Promise.all([
@@ -147,10 +147,20 @@ export default async function WorkspacePage({
     assignee_ids: filters.assigneeIds,
     phase_ids: filters.phaseIds,
   });
-  const schedules = (schedulesRaw ?? []) as Schedule[];
+  // 로드맵에 넘기는 전체 목록. 다른 뷰에서는 이미 기간으로 걸러져 온 것과 같다.
+  const allSchedules = (schedulesRaw ?? []) as Schedule[];
 
-  // 축은 가져온 데이터가 정한다. 일정이 없으면 오늘 둘레로 최소 폭을 준다.
-  const range = isRoadmap ? spanAll(schedules) : fetchRange;
+  /*
+   * 화면의 나머지(하단 집계, 지연 건수, 다른 뷰)는 지금까지처럼 기간 안의
+   * 것만 센다. 전체를 가져온 것은 로드맵 트리 때문이지, 집계 기준을 바꾸려는
+   * 것이 아니다.
+   */
+  const schedules =
+    view === 'roadmap'
+      ? allSchedules.filter(
+          (s) => new Date(s.end_at) >= range.start && new Date(s.start_at) <= range.end,
+        )
+      : allSchedules;
 
   /*
    * 지연 강조 켜기/끄기. 항목을 감추지 않는다 — 끄면 지연된 일도 다른 일과
@@ -189,15 +199,14 @@ export default async function WorkspacePage({
       teams={teams ?? []}
       phases={phases ?? []}
       projects={projects ?? []}
-      schedules={schedules ?? []}
+      schedules={schedules}
+      allSchedules={allSchedules}
       milestones={milestones ?? []}
       assignees={assignees ?? []}
       dependencies={deps ?? []}
       view={view}
       scale={scale}
       anchorIso={anchor.toISOString()}
-      rangeStartIso={range.start.toISOString()}
-      rangeEndIso={range.end.toISOString()}
       selectedId={selectedId}
       filters={filters}
       markLate={markLate}

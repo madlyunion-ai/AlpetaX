@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useCallback, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import {
   addDays,
@@ -89,6 +89,13 @@ const MS_LANE_H = 26; // 마일스톤 전용 줄
 interface Props {
   range: DateRange;
   scale: TimeScale;
+  /**
+   * 워크스페이스의 모든 일정. 보이는 기간 밖의 것도 들어 있다.
+   *
+   * 트리의 줄은 이 목록으로 만든다 — 기간을 옮겼다고 프로젝트나 업무구분 줄이
+   * 사라지면, 일정을 등록해 둔 사람에게는 없어진 것처럼 보인다. 줄과 높이는
+   * 그대로 두고, 막대만 기간 안일 때 그린다.
+   */
   schedules: Schedule[];
   projects: Project[];
   phases: Phase[];
@@ -255,6 +262,8 @@ export function RoadmapView({
       list: Schedule[],
     ) => {
       if (!list.length) return;
+      // 레인 배정은 전체 목록으로 한다 — 보이는 것만으로 계산하면 기간을
+      // 옮길 때마다 같은 막대가 다른 줄로 옮겨 다닌다.
       const bars = packLanes(list, minGapMs);
       const lanes = Math.max(1, laneCount(bars));
       rows.push({
@@ -323,23 +332,6 @@ export function RoadmapView({
   const totalHeight = MS_LANE_H + bandsHeight;
   const todayX = sc.x(new Date());
   const showToday = todayX >= 0 && todayX <= sc.totalWidth;
-
-  /*
-   * 처음 열 때 오늘이 보이는 자리로 스크롤한다.
-   * 축이 등록된 일정 전부를 덮으므로, 몇 해 전 일정이 있으면 왼쪽 끝에서
-   * 시작해 오늘이 화면 밖에 있다. 오늘을 왼쪽에서 1/3 지점에 두면 지나간 일과
-   * 앞으로 할 일이 함께 보인다.
-   *
-   * 한 번만 한다 — 사용자가 옮겨 둔 위치를 다시 그릴 때마다 빼앗으면 안 된다.
-   */
-  const scrolledOnce = useRef(false);
-  useEffect(() => {
-    const el = bodyRef.current;
-    if (!el || scrolledOnce.current || !showToday) return;
-    scrolledOnce.current = true;
-    el.scrollLeft = Math.max(0, todayX - el.clientWidth / 3);
-    if (headRef.current) headRef.current.scrollLeft = el.scrollLeft;
-  }, [todayX, showToday]);
 
   /** 화면 안에 들어오는 마일스톤만, 통계와 프로젝트 이름까지 붙여서 */
   const visibleMilestones = useMemo(() => {
@@ -568,6 +560,9 @@ export function RoadmapView({
             >
               {b.bars.map((bar) => {
                 const s = bar.schedule;
+                // 보이는 기간과 겹치지 않으면 그리지 않는다. 줄과 높이는
+                // 이미 잡혀 있으므로 자리는 그대로 남는다.
+                if (new Date(s.end_at) < range.start || new Date(s.start_at) > range.end) return null;
                 const x = sc.x(s.start_at);
                 const w = Math.max(10, sc.x(s.end_at) - x);
                 const days = differenceInCalendarDays(new Date(s.end_at), new Date(s.start_at)) + 1;

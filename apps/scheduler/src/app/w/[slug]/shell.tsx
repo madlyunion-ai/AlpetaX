@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { createClient } from '@/lib/supabase/client';
-import { stepAnchor } from '@/lib/schedule-core/range';
+import { rangeFor, stepAnchor } from '@/lib/schedule-core/range';
 import { memberLabel } from '@/lib/schedule-core/types';
 import type {
   Dependency,
@@ -51,16 +51,14 @@ export interface ShellProps {
   phases: Phase[];
   projects: Project[];
   schedules: Schedule[];
+  /** 기간과 무관한 전체 목록. 로드맵 트리가 줄을 만드는 데 쓴다. */
+  allSchedules: Schedule[];
   milestones: Milestone[];
   assignees: { schedule_id: string; membership_id: string }[];
   dependencies: Dependency[];
   view: ViewKind;
   scale: TimeScale;
   anchorIso: string;
-  /** 조회에 쓴 범위. 서버가 정한 값을 그대로 쓴다 — 로드맵은 규칙이 달라
-   *  여기서 다시 계산하면 서버가 가져온 것과 축이 어긋난다. */
-  rangeStartIso: string;
-  rangeEndIso: string;
   selectedId: string | null;
   filters: Filters;
   /** 지연을 빨강으로 강조하는 중인가. 끄면 다른 일과 같은 색으로 보인다. */
@@ -103,10 +101,7 @@ export function Shell(props: ShellProps) {
 
   const select = useCallback((id: string | null) => setParams({ sel: id }), [setParams]);
 
-  const range = useMemo(
-    () => ({ start: new Date(props.rangeStartIso), end: new Date(props.rangeEndIso) }),
-    [props.rangeStartIso, props.rangeEndIso],
-  );
+  const range = useMemo(() => rangeFor(view, anchor, scale), [view, anchor, scale]);
 
   const rangeLabel = useMemo(() => {
     if (view === 'day') return format(anchor, 'yyyy년 M월 d일 (EEE)', { locale: ko });
@@ -227,32 +222,24 @@ export function Shell(props: ShellProps) {
       <div className="canvas">
         <div className="toolbar">
           <div className="toolbar__nav">
-            {/* 로드맵은 등록된 일정 전부를 한 축에 편다. 기준일을 옮겨도
-                보이는 구간이 그대로라, 이동 버튼을 두면 고장으로 읽힌다. */}
-            {view === 'roadmap' ? (
-              <span className="toolbar__label toolbar__label--wide">{rangeLabel}</span>
-            ) : (
-              <>
-                <button
-                  className="btn btn--ghost"
-                  aria-label="이전"
-                  onClick={() => setParams({ anchor: stepAnchor(view, anchor, -1, scale).toISOString() })}
-                >
-                  ‹
-                </button>
-                <span className="toolbar__label">{rangeLabel}</span>
-                <button
-                  className="btn btn--ghost"
-                  aria-label="다음"
-                  onClick={() => setParams({ anchor: stepAnchor(view, anchor, 1, scale).toISOString() })}
-                >
-                  ›
-                </button>
-                <button className="btn" onClick={() => setParams({ anchor: new Date().toISOString() })}>
-                  오늘
-                </button>
-              </>
-            )}
+            <button
+              className="btn btn--ghost"
+              aria-label="이전"
+              onClick={() => setParams({ anchor: stepAnchor(view, anchor, -1, scale).toISOString() })}
+            >
+              ‹
+            </button>
+            <span className="toolbar__label">{rangeLabel}</span>
+            <button
+              className="btn btn--ghost"
+              aria-label="다음"
+              onClick={() => setParams({ anchor: stepAnchor(view, anchor, 1, scale).toISOString() })}
+            >
+              ›
+            </button>
+            <button className="btn" onClick={() => setParams({ anchor: new Date().toISOString() })}>
+              오늘
+            </button>
           </div>
 
           <div className="tabs" role="tablist">
@@ -344,7 +331,8 @@ export function Shell(props: ShellProps) {
             <RoadmapView
               range={range}
               scale={scale}
-              schedules={props.schedules}
+              /* 로드맵만 전체를 받는다 — 트리의 줄이 기간에 따라 사라지지 않게 */
+              schedules={props.allSchedules}
               projects={props.projects}
               phases={props.phases}
               milestones={props.milestones}

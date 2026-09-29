@@ -11,7 +11,6 @@ import {
 } from './layout';
 import { dowIndex, holidayName, isRestDay, SATURDAY, SUNDAY, WEEK_STARTS_ON } from './holidays';
 import { milestoneStat, milestoneTiming } from './milestone';
-import { spanAll } from './range';
 import { activeNow, isLate, peakConcurrency, workloadFor } from './workload';
 import type { Schedule } from './types';
 
@@ -451,50 +450,6 @@ describe('workloadFor — 담당자별 업무현황', () => {
     );
     expect(w.busyDays).toBe(0);
     expect(w.active + w.upcoming + w.late + w.done).toBe(0);
-  });
-});
-
-describe('spanAll — 가진 일정을 모두 담는 범위', () => {
-  const now = new Date('2026-09-28T09:00:00');
-
-  it('가장 이른 시작부터 가장 늦은 끝까지 담는다', () => {
-    const r = spanAll(
-      [
-        { start_at: iso('2025-03-11'), end_at: iso('2025-04-02') },
-        { start_at: iso('2027-01-20'), end_at: iso('2027-02-15') },
-      ],
-      now,
-    );
-    expect(r.start.getFullYear()).toBe(2025);
-    expect(r.start.getMonth()).toBe(2); // 3월
-    expect(r.end.getFullYear()).toBe(2027);
-    expect(r.end.getMonth()).toBe(1); // 2월
-  });
-
-  it('월 경계에 맞춘다', () => {
-    const r = spanAll([{ start_at: iso('2026-05-17'), end_at: iso('2026-05-19') }], now);
-    expect(r.start.getDate()).toBe(1);
-    expect(r.end.getDate()).toBeGreaterThan(27);
-  });
-
-  it('일정이 모두 과거여도 오늘을 포함한다', () => {
-    const r = spanAll([{ start_at: iso('2024-01-05'), end_at: iso('2024-02-10') }], now);
-    expect(r.start <= new Date('2024-01-01')).toBe(true);
-    expect(r.end >= now).toBe(true);
-  });
-
-  it('일정이 없으면 오늘 둘레로 최소 폭을 준다', () => {
-    const r = spanAll([], now, 6);
-    const months =
-      (r.end.getFullYear() - r.start.getFullYear()) * 12 + (r.end.getMonth() - r.start.getMonth()) + 1;
-    expect(months).toBe(6);
-  });
-
-  it('폭이 모자라면 뒤로 늘린다 — 오늘이 오른쪽 끝에 몰리지 않게', () => {
-    const r = spanAll([{ start_at: iso('2026-09-10'), end_at: iso('2026-09-20') }], now, 6);
-    // 시작은 9월 그대로, 끝이 밀려난다
-    expect(r.start.getMonth()).toBe(8);
-    expect(r.end.getMonth()).toBe(1); // 이듬해 2월
   });
 });
 
