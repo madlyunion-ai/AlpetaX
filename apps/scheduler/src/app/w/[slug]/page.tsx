@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { rangeFor } from '@/lib/schedule-core/range';
+import { rangeFor, spanAll } from '@/lib/schedule-core/range';
 import { isLate } from '@/lib/schedule-core/workload';
 import type {
   Membership,
@@ -89,7 +89,18 @@ export default async function WorkspacePage({
     assigneeIds: parseList(one('assignees')),
   };
 
-  const range = rangeFor(view, anchor, scale);
+  /*
+   * 로드맵만 범위가 다르다. 다른 뷰는 "이 기간" 을 보는 화면이라 창을 잘라
+   * 가져오지만, 로드맵은 "이 팀이 하는 일 전부" 를 보는 화면이다. 기준일
+   * 둘레만 가져오면 그 밖의 일정이 등록돼 있는데도 화면에서 사라진다.
+   *
+   * 그래서 로드맵은 넉넉한 창으로 한 번 긁어 온 뒤, 실제 데이터가 놓인
+   * 구간으로 축을 다시 잡는다. 질의는 여전히 schedules_in_range 하나다.
+   */
+  const isRoadmap = view === 'roadmap';
+  const fetchRange = isRoadmap
+    ? { start: new Date('1970-01-01T00:00:00Z'), end: new Date('2100-01-01T00:00:00Z') }
+    : rangeFor(view, anchor, scale);
 
   const [{ data: members }, { data: teams }, { data: phases }, { data: projects }, { data: me }] =
     await Promise.all([
@@ -129,14 +140,17 @@ export default async function WorkspacePage({
   // 다섯 뷰가 전부 이 함수 하나를 부른다
   const { data: schedulesRaw, error: schedErr } = await supabase.rpc('schedules_in_range', {
     ws: workspace.id,
-    from_ts: range.start.toISOString(),
-    to_ts: range.end.toISOString(),
+    from_ts: fetchRange.start.toISOString(),
+    to_ts: fetchRange.end.toISOString(),
     project_ids: filters.projectIds,
     team_ids: filters.teamIds,
     assignee_ids: filters.assigneeIds,
     phase_ids: filters.phaseIds,
   });
   const schedules = (schedulesRaw ?? []) as Schedule[];
+
+  // 축은 가져온 데이터가 정한다. 일정이 없으면 오늘 둘레로 최소 폭을 준다.
+  const range = isRoadmap ? spanAll(schedules) : fetchRange;
 
   /*
    * 지연 강조 켜기/끄기. 항목을 감추지 않는다 — 끄면 지연된 일도 다른 일과
@@ -182,6 +196,8 @@ export default async function WorkspacePage({
       view={view}
       scale={scale}
       anchorIso={anchor.toISOString()}
+      rangeStartIso={range.start.toISOString()}
+      rangeEndIso={range.end.toISOString()}
       selectedId={selectedId}
       filters={filters}
       markLate={markLate}

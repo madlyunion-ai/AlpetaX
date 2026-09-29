@@ -72,6 +72,45 @@ export function timelineRange(anchor: Date, scale: TimeScale): DateRange {
   }
 }
 
+/**
+ * 가진 일정을 모두 담는 범위.
+ *
+ * 로드맵은 "지금 보고 있는 기간" 이 아니라 "이 팀이 하는 일 전부" 를 보여 주는
+ * 화면이다. 기준일 둘레만 잘라 보여 주면 그 밖의 일정은 등록해 두고도 사라져,
+ * 없는 것처럼 읽힌다.
+ *
+ * 오늘을 항상 포함하는 이유: 다 지난 일정만 남았을 때도 '오늘' 선이 화면에
+ * 있어야 그 일정들이 과거라는 사실이 보인다.
+ *
+ * 최소 폭을 두는 이유: 일정이 하나뿐이면 축이 한 달짜리가 되어, 막대가 화면을
+ * 가득 채우고 아무 맥락도 남지 않는다.
+ */
+export function spanAll(
+  items: { start_at: string; end_at: string }[],
+  now = new Date(),
+  minMonths = 6,
+): DateRange {
+  let lo = startOfDay(now);
+  let hi = startOfDay(now);
+
+  for (const it of items) {
+    const a = new Date(it.start_at);
+    const b = new Date(it.end_at);
+    if (a < lo) lo = a;
+    if (b > hi) hi = b;
+  }
+
+  const start = startOfMonth(lo);
+  let end = endOfMonth(hi);
+
+  // 월 수가 모자라면 뒤쪽으로 늘린다 — 앞을 늘리면 오늘이 화면 오른쪽 끝으로
+  // 밀려 지금 할 일이 가장 보기 어려운 자리에 놓인다.
+  const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
+  if (months < minMonths) end = endOfMonth(addMonths(start, minMonths - 1));
+
+  return { start, end };
+}
+
 /** 이전/다음 버튼이 기준일을 옮기는 폭. */
 export function stepAnchor(view: ViewKind, anchor: Date, dir: -1 | 1, scale: TimeScale): Date {
   switch (view) {

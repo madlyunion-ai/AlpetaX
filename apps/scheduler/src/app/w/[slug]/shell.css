@@ -2087,3 +2087,9 @@
     flex: 1;
   }
 }
+
+/* 로드맵의 기간 표시 — 이동 버튼이 없는 자리를 라벨이 쓴다 */
+.toolbar__label--wide {
+  min-width: auto;
+  padding: 0 4px;
+}

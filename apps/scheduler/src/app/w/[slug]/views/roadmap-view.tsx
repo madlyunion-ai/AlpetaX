@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import {
   addDays,
@@ -323,6 +323,23 @@ export function RoadmapView({
   const totalHeight = MS_LANE_H + bandsHeight;
   const todayX = sc.x(new Date());
   const showToday = todayX >= 0 && todayX <= sc.totalWidth;
+
+  /*
+   * 처음 열 때 오늘이 보이는 자리로 스크롤한다.
+   * 축이 등록된 일정 전부를 덮으므로, 몇 해 전 일정이 있으면 왼쪽 끝에서
+   * 시작해 오늘이 화면 밖에 있다. 오늘을 왼쪽에서 1/3 지점에 두면 지나간 일과
+   * 앞으로 할 일이 함께 보인다.
+   *
+   * 한 번만 한다 — 사용자가 옮겨 둔 위치를 다시 그릴 때마다 빼앗으면 안 된다.
+   */
+  const scrolledOnce = useRef(false);
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el || scrolledOnce.current || !showToday) return;
+    scrolledOnce.current = true;
+    el.scrollLeft = Math.max(0, todayX - el.clientWidth / 3);
+    if (headRef.current) headRef.current.scrollLeft = el.scrollLeft;
+  }, [todayX, showToday]);
 
   /** 화면 안에 들어오는 마일스톤만, 통계와 프로젝트 이름까지 붙여서 */
   const visibleMilestones = useMemo(() => {
