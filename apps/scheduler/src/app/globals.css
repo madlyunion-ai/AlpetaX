@@ -1,0 +1,531 @@
+/* ── Pretendard ───────────────────────────────────────────────────────
+   실제로 쓰는 4종만 싣는다. 한 종이 ~270KB 라 전 웨이트를 넣으면
+   첫 화면 로드에서만 2.4MB 를 더 쓴다.
+   swap: 폰트가 늦어도 글자는 먼저 보여 준다. */
+@font-face {
+  font-family: 'Pretendard';
+  src: url('/fonts/Pretendard-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Pretendard';
+  src: url('/fonts/Pretendard-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Pretendard';
+  src: url('/fonts/Pretendard-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Pretendard';
+  src: url('/fonts/Pretendard-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --ground: #f4f6f8;
+  --surface: #ffffff;
+  --sunken: #ebeef2;
+  --line: #d8dee6;
+  --line-soft: #e6eaf0;
+  --ink: #171b24;
+  --ink-2: #4a5364;
+  --ink-3: #7b8698;
+  --accent: #16706c;
+  --accent-ink: #ffffff;
+  --accent-soft: #d9eae8;
+  --long: #5460c4;
+  --mid: #c06a32;
+  --short: #2f8560;
+  --warn: #b4342f;
+  /*
+   * 지연 막대용 빨강 — --warn 을 20% 밝힌 값.
+   * 경고 문구에 쓰는 --warn 을 그대로 면에 칠하면 너무 무거워 옆 막대들을
+   * 눌러 버린다. 글자색은 --warn 그대로 두고 면만 밝힌다.
+   */
+  --warn-bar: #c35d59;
+  --warn-soft: #fbe9e8;
+  --today: #2563eb;
+  --sidebar-bg: #ffffff;
+  --frame-line: #93a6bb;
+  --group-line: #c2ccd8;
+  --logo-ink: #2f3e6e;
+  --bar-outline: rgba(0, 0, 0, 0.1);
+  --sidebar-hover: #eaf1fb;
+  --sidebar-chip: #eef4fc;
+  --sidebar-chip-hover: #dbe7f7;
+  --sidebar-ink: #17335e;
+  --sidebar-ink-2: #3d5b82;
+  --sidebar-ink-3: #62809f;
+  --hdr-year: #cfe0f6;
+  --hdr-month: #e3edfa;
+  --hdr-week: #f1f6fd;
+  /*
+   * 로드맵 년/월/주 3단 헤더의 높이 = 17 + 18 + 18.
+   * 사이드바 구분선도 이 값에 맞춰 마일스톤 줄의 윗선과 같은 높이에 온다.
+   * 두 곳이 같은 토큰을 보므로 헤더 높이를 바꾸면 구분선이 따라온다.
+   */
+  --rm-head-h: 53px;
+  --hdr-line: #b9d0ec;
+  --hdr-ink: #1f3a5f;
+  /*
+   * 로드맵 3단 축 전용 회색.
+   * 파랑 계열(--hdr-*)과 따로 두는 이유 — 트리 2열과 월/주 뷰 머리칸은
+   * 계속 파랑을 쓰므로, 축만 회색으로 바꾸려면 축이 자기 색을 가져야 한다.
+   */
+  --axis-bg: #f6f7f8;
+  --axis-line: #c8ccd3;
+  --axis-line-soft: #dcdfe4;
+  --navy: #1b3a6b;
+  --cal-ink: #333333;
+  --cal-sat: #1a72ff;
+  --cal-sun: #f53434;
+  --past-bg: #fcfcfc;
+  --today-bg: #e3efff;
+  --select-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234a5364' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --shadow: 0 1px 2px rgba(23, 27, 36, 0.05), 0 8px 24px -16px rgba(23, 27, 36, 0.28);
+  --f-body: 'Pretendard', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-mono: ui-monospace, 'Cascadia Mono', Consolas, 'Pretendard', monospace;
+  --radius: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ground: #10131a;
+    --surface: #181c25;
+    --sunken: #13161e;
+    --line: #2c3341;
+    --line-soft: #232936;
+    --ink: #e4e8f0;
+    --ink-2: #a3adbf;
+    --ink-3: #6e7a8d;
+    --accent: #4fb3ac;
+    --accent-ink: #06201e;
+    --accent-soft: #163330;
+    --long: #8b95e4;
+    --mid: #dd9159;
+    --short: #58b189;
+    --warn: #e8736d;
+    --warn-bar: #ed8f8a;
+    --warn-soft: #2a1614;
+    --today: #6b9dff;
+    --sidebar-bg: #181c25;
+    --frame-line: #3f4c5e;
+    --group-line: #323c4c;
+    --logo-ink: #cfe0f6;
+    --bar-outline: rgba(255, 255, 255, 0.12);
+    --sidebar-hover: #27303f;
+    --sidebar-chip: #242e3d;
+    --sidebar-chip-hover: #303d51;
+    --sidebar-ink: #d7e5f7;
+    --sidebar-ink-2: #9db4d2;
+    --sidebar-ink-3: #7590b0;
+    --hdr-year: #1d2d44;
+    --hdr-month: #182433;
+    --hdr-week: #141c27;
+    --hdr-line: #2b3f58;
+    --axis-bg: #1e2126;
+    --axis-line: #3a4048;
+    --axis-line-soft: #2b3037;
+    --hdr-ink: #a9c6ea;
+    --navy: #9cc0ef;
+    --cal-ink: #e4e8f0;
+    --cal-sat: #5fa3ff;
+    --cal-sun: #ff6b6b;
+    --past-bg: #161a21;
+    --today-bg: #1b2940;
+    --select-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a3adbf' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -16px rgba(0, 0, 0, 0.8);
+  }
+}
+
+:root[data-theme='dark'] {
+  --ground: #10131a;
+  --surface: #181c25;
+  --sunken: #13161e;
+  --line: #2c3341;
+  --line-soft: #232936;
+  --ink: #e4e8f0;
+  --ink-2: #a3adbf;
+  --ink-3: #6e7a8d;
+  --accent: #4fb3ac;
+  --accent-ink: #06201e;
+  --accent-soft: #163330;
+  --long: #8b95e4;
+  --mid: #dd9159;
+  --short: #58b189;
+  --warn: #e8736d;
+  --warn-bar: #ed8f8a;
+  --warn-soft: #2a1614;
+  --today: #6b9dff;
+  --sidebar-bg: #181c25;
+  --frame-line: #3f4c5e;
+  --group-line: #323c4c;
+  --logo-ink: #cfe0f6;
+  --bar-outline: rgba(255, 255, 255, 0.12);
+  --sidebar-hover: #27303f;
+  --sidebar-chip: #242e3d;
+  --sidebar-chip-hover: #303d51;
+  --sidebar-ink: #d7e5f7;
+  --sidebar-ink-2: #9db4d2;
+  --sidebar-ink-3: #7590b0;
+  --hdr-year: #1d2d44;
+  --hdr-month: #182433;
+  --hdr-week: #141c27;
+  --hdr-line: #2b3f58;
+  --axis-bg: #1e2126;
+  --axis-line: #3a4048;
+  --axis-line-soft: #2b3037;
+  --hdr-ink: #a9c6ea;
+  --navy: #9cc0ef;
+  --cal-ink: #e4e8f0;
+  --cal-sat: #5fa3ff;
+  --cal-sun: #ff6b6b;
+  --past-bg: #161a21;
+  --today-bg: #1b2940;
+  --select-arrow: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a3adbf' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -16px rgba(0, 0, 0, 0.8);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── 공용 프리미티브 ──────────────────────────────────────────────── */
+.mono {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 14px;
+}
+.btn:hover {
+  background: var(--sunken);
+}
+.btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.btn--primary:hover {
+  filter: brightness(1.08);
+  background: var(--accent);
+}
+.btn--ghost {
+  border-color: transparent;
+  background: transparent;
+}
+.btn--ghost:hover {
+  background: var(--sunken);
+}
+/*
+ * 설정 화면에서 쓰는 것과 같은 스위치.
+ * 손잡이의 위치가 상태다 — 색만으로 표시하면 색을 구분하기 어려운 사용자가
+ * 읽지 못한다. aria-checked 에 스타일을 걸어 화면과 보조기기가 같은 값을 본다.
+ */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 14px;
+  font-family: inherit;
+}
+.switch:hover {
+  background: var(--sunken);
+}
+.switch__text {
+  line-height: 1;
+}
+.switch__count {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--warn);
+  color: #fff;
+}
+.switch__track {
+  position: relative;
+  width: 30px;
+  height: 17px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--line);
+  transition: background-color 0.16s ease;
+}
+.switch__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.16s ease;
+}
+.switch[aria-checked='true'] .switch__track {
+  background: var(--accent);
+}
+.switch[aria-checked='true'] .switch__knob {
+  transform: translateX(13px);
+}
+.switch[aria-checked='false'] .switch__text {
+  color: var(--ink-3);
+}
+
+/*
+ * 작은 수·상태를 감싸는 뱃지. 지연 칩과 마일스톤 건수가 같은 모양을 쓴다 —
+ * 두 곳에 따로 정의해 두면 한쪽만 손봤을 때 같은 뜻이 다르게 보인다.
+ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  line-height: 1;
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: var(--sunken);
+  color: var(--ink-3);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-style: normal;
+}
+.badge--warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.btn--danger {
+  color: var(--warn);
+  border-color: var(--line);
+}
+.btn--danger:hover {
+  background: var(--warn-soft);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.field > label {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.input,
+.select {
+  width: 100%;
+  height: 34px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.textarea {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.textarea {
+  min-height: 72px;
+  resize: vertical;
+  line-height: 1.55;
+}
+.input:focus,
+.select:focus,
+.textarea:focus {
+  border-color: var(--accent);
+}
+
+/* 화살표 오른쪽 여백을 12px 로 — 네이티브 기본값(약 4px)보다 8px 넉넉하다 */
+.select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: var(--select-arrow);
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 10px 6px;
+  padding-right: 30px;
+}
+.select::-ms-expand {
+  display: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 12px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  min-height: 220px;
+  color: var(--ink-3);
+  text-align: center;
+  padding: 2rem;
+  gap: 6px;
+}
+
+/* ── 조용한 스크롤바 ──────────────────────────────────────────────
+   항상 떠 있는 회색 막대는 좁은 패널에서 실제 내용만큼 시선을 끈다.
+   scrollbar-gutter: stable 로 자리는 미리 잡아 두어, 손잡이가 나타났다
+   사라질 때 내용이 밀리지 않는다. */
+.quiet-scroll {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.18s ease;
+}
+.quiet-scroll--xy {
+  overflow: auto;
+  scrollbar-gutter: auto;
+}
+
+.quiet-scroll:hover,
+.quiet-scroll:focus-within,
+.quiet-scroll[data-scrolling='true'] {
+  scrollbar-color: var(--line) transparent;
+}
+.quiet-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.quiet-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.quiet-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+  transition: background-color 0.18s ease;
+}
+.quiet-scroll:hover::-webkit-scrollbar-thumb,
+.quiet-scroll:focus-within::-webkit-scrollbar-thumb,
+.quiet-scroll[data-scrolling='true']::-webkit-scrollbar-thumb {
+  background: var(--ink-3);
+  background-clip: content-box;
+}
+.quiet-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-2);
+  background-clip: content-box;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

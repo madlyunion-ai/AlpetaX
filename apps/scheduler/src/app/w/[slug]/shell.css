@@ -1,0 +1,1942 @@
+/* ── 셸 ──────────────────────────────────────────────────────────── */
+.shell {
+  --toolbar-h: 48px;
+  --footbar-h: 38px;
+  position: relative;
+  display: grid;
+  grid-template-rows: 1fr var(--footbar-h);
+  grid-template-columns: 172px 1fr;
+  grid-template-areas:
+    'side canvas'
+    'foot foot';
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.sidebar {
+  grid-area: side;
+  border-right: 1px solid var(--frame-line);
+  background: var(--sidebar-bg);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+  overflow: hidden;
+}
+/* 필터 목록만 스크롤한다 — 스크롤바 자리는 이 안에서만 잡힌다 */
+.sidebar__list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px 4px 24px 8px;
+  min-height: 0;
+}
+
+/*
+ * 브랜드 + 프로젝트 선택.
+ * 로고 칸을 툴바와 똑같은 높이로 잡고 간격을 0 으로 두면, 프로젝트 선택의
+ * 윗변이 오른쪽 툴바의 아랫변과 정확히 같은 높이에 온다. 로고 높이를 재서
+ * 여백을 맞추지 않는 이유 — 로고를 갈아끼우면 그 계산이 곧바로 틀어진다.
+ */
+.sidebar__brandbox {
+  display: grid;
+  grid-template-rows: var(--toolbar-h) var(--rm-head-h);
+  padding: 0 12px 0 14px;
+  background: var(--sidebar-bg);
+  border-bottom: 1px solid var(--line-soft);
+}
+/* 로고는 그 칸 안에서 수직 가운데 — 툴바 요소들과 같은 정렬이다 */
+.sidebar__brandbox > :first-child {
+  align-self: center;
+}
+/* 선택 상자는 둘째 칸 위쪽에 붙는다. 칸이 상자보다 높은 건 의도한 것 —
+   남는 아래 여백이 구분선을 마일스톤 윗선 높이까지 밀어낸다. */
+.sidebar__brandbox > .select {
+  align-self: start;
+}
+.sidebar__logo {
+  display: block;
+  width: 100%;
+  max-width: 140px;
+  height: auto;
+}
+.sidebar__grouphead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  padding: 0 0 0 4px;
+}
+.sidebar__group > .sidebar__grouphead > h3 {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sidebar-ink-3);
+  margin: 0;
+  flex: 1;
+}
+/* 전체 선택/해제 — 항목이 많을 때 하나씩 누르지 않아도 되게 */
+.sidebar__all {
+  border: 0;
+  background: var(--sidebar-chip);
+  color: var(--sidebar-ink-2);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+  transition:
+    background-color 0.14s ease,
+    color 0.14s ease;
+}
+.sidebar__all:hover {
+  background: var(--sidebar-chip-hover);
+  color: var(--sidebar-ink);
+}
+.sidebar__all:active {
+  background: var(--sidebar-chip-hover);
+  transform: translateY(0.5px);
+}
+
+.sidebar__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 3.5px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--sidebar-ink-2);
+  line-height: 1.3;
+  user-select: none;
+}
+.sidebar__item:hover {
+  background: var(--sidebar-hover);
+  color: var(--sidebar-ink);
+}
+.sidebar__item[data-on='true'] {
+  color: var(--sidebar-ink);
+  font-weight: 400;
+}
+.sidebar__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 진짜 체크박스. accent-color 로 두 테마 모두에서 네이티브 동작을 유지한다 */
+.sidebar__box {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--navy);
+  cursor: pointer;
+}
+
+.sidebar__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.sidebar__empty {
+  font-size: 13px;
+  color: var(--sidebar-ink-3);
+  padding: 0 6px;
+  margin: 0;
+}
+.sidebar__add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 3.5px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--sidebar-ink-3);
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+}
+.sidebar__add:hover {
+  background: var(--sidebar-hover);
+  color: var(--sidebar-ink);
+}
+.sidebar .mono {
+  color: var(--sidebar-ink-3);
+}
+
+.canvas {
+  grid-area: canvas;
+  display: grid;
+  grid-template-rows: var(--toolbar-h) 1fr;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* 날짜 이동 · 뷰 탭 · 도구가 한 줄에 선다 */
+.toolbar {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  padding: 0 12px 0 10px;
+  border-bottom: 1px solid var(--frame-line);
+  background: var(--surface);
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.toolbar__nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+.toolbar__label {
+  font-weight: 600;
+  font-size: 15px;
+  min-width: 132px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.toolbar__spacer {
+  flex: 1;
+  min-width: 8px;
+}
+.toolbar__right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+/* 셀렉트도 버튼과 같은 34px — 한 줄에서 키가 어긋나면 눈에 띈다 */
+.toolbar__right .select {
+  height: 34px;
+  width: auto;
+}
+
+.tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  flex: none;
+}
+.tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: calc(var(--toolbar-h) - 1px);
+  padding: 0 14px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+/* 선택 표시선. bottom:0 이면 탭 콘텐츠 박스의 바닥 —
+   곧 .tabs 의 1px 경계선 바로 위에 얹힌다. */
+.tab::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 0;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: transparent;
+  transition: background-color 0.15s ease;
+}
+.tab:hover {
+  color: var(--ink-2);
+}
+.tab:hover::after {
+  background: var(--line);
+}
+.tab[data-on='true'] {
+  color: var(--navy);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.tab[data-on='true']::after {
+  background: var(--navy);
+}
+
+.stage {
+  overflow: auto;
+  min-height: 0;
+  background: var(--ground);
+  position: relative;
+}
+
+.footbar {
+  grid-area: foot;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.footbar b {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 월 뷰 ───────────────────────────────────────────────────────── */
+.month {
+  display: grid;
+  grid-template-rows: 26px 1fr;
+  height: 100%;
+  min-height: 520px;
+}
+.month__head {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.month__head > span {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  display: grid;
+  place-items: center;
+}
+.month__head > span[data-sat='true'] {
+  color: var(--cal-sat);
+}
+.month__head > span[data-sun='true'] {
+  color: var(--cal-sun);
+}
+.month__body {
+  display: grid;
+  grid-auto-rows: minmax(104px, 1fr);
+}
+.month__week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  position: relative;
+  border-bottom: 1px solid var(--line-soft);
+}
+.month__cell {
+  border-right: 1px solid var(--line-soft);
+  background: var(--surface);
+  padding: 2px 4px;
+  min-width: 0;
+}
+/* 아래로 갈수록 강한 규칙 — 오늘이 무엇보다 위다 */
+.month__cell[data-past='true'] {
+  background: var(--past-bg);
+}
+.month__cell[data-out='true'] {
+  background: var(--sunken);
+}
+.month__cell[data-today='true'] {
+  background: var(--today-bg);
+}
+.month__daynum {
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--cal-ink);
+  padding: 1px 3px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.month__daynum[data-sat='true'] {
+  color: var(--cal-sat);
+}
+.month__daynum[data-sun='true'] {
+  color: var(--cal-sun);
+}
+/* 지난달·다음달은 원래대로 흐리게 — 요일 색보다 "이 달이 아님"이 먼저다 */
+.month__cell[data-out='true'] .month__daynum,
+.month__cell[data-out='true'] .month__daynum[data-sat='true'],
+.month__cell[data-out='true'] .month__daynum[data-sun='true'] {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+/* 오늘은 칸 배경이 알려 준다 — 숫자는 굵기만 올린다 */
+.month__daynum[data-today='true'],
+.month__cell[data-out='true'] .month__daynum[data-today='true'] {
+  font-weight: 700;
+}
+.month__lanes {
+  position: absolute;
+  inset: 22px 0 2px 0;
+  pointer-events: none;
+}
+.month__bar {
+  position: absolute;
+  height: 19px;
+  border-radius: 4px;
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 19px;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+  border: 0;
+  text-align: left;
+}
+.month__bar[data-done='true'] {
+  filter: saturate(0.4);
+  text-decoration: line-through;
+}
+.month__bar[data-sel='true'] {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+.month__more {
+  position: absolute;
+  font-size: 11px;
+  color: var(--ink-3);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  pointer-events: auto;
+  padding: 0 4px;
+}
+
+/* ── 주/일 뷰 ────────────────────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  height: 100%;
+}
+/* 날짜 머리글 — 아래 칸과 같은 흰 바탕. 날짜를 알리는 것은 배경색이 아니라
+   글자(토·일 색, 오늘 배경)이므로 바탕까지 채우면 그 신호가 묻힌다.
+   아래 종일 칸만 한 단계 눌러 두 줄의 층위를 남긴다. */
+.grid__head {
+  display: grid;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--hdr-ink);
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+.grid__headcell {
+  padding: 5px 6px;
+  border-right: 1px solid var(--line-soft);
+  font-size: 13px;
+  text-align: center;
+}
+.grid__headcell b {
+  font-variant-numeric: tabular-nums;
+  font-size: 16px;
+  display: block;
+}
+.grid__headcell {
+  color: var(--cal-ink);
+}
+.grid__headcell[data-sat='true'],
+.grid__headcell[data-sat='true'] .mono {
+  color: var(--cal-sat);
+}
+.grid__headcell[data-sun='true'],
+.grid__headcell[data-sun='true'] .mono {
+  color: var(--cal-sun);
+}
+.grid__headcell[data-today='true'] b {
+  color: var(--accent);
+}
+.grid__allday {
+  display: grid;
+  border-bottom: 1px solid var(--line);
+  background: var(--hdr-week);
+  min-height: 26px;
+}
+.grid__alldaycell {
+  border-right: 1px solid var(--line-soft);
+  padding: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.grid__body {
+  position: relative;
+  display: grid;
+  overflow: visible;
+}
+/* 시간대 칸. 타임라인의 좌측 패널(.gantt__tree)과 같은 방식 —
+   차트와 같은 바탕을 쓰고 1px 선 하나로만 갈라 놓는다. 색이 서로 다르면
+   시간 눈금과 그 시간의 칸이 딴 판으로 읽힌다. */
+.grid__gutter {
+  position: relative;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}
+.grid__hour {
+  height: 48px;
+  border-bottom: 1px solid var(--line-soft);
+  position: relative;
+}
+.grid__hourlabel {
+  position: absolute;
+  top: -8px;
+  right: 6px;
+  font-size: 11px;
+  font-family: var(--f-mono);
+  color: var(--ink-3);
+  background: var(--surface);
+  padding: 0 2px;
+}
+.grid__col {
+  position: relative;
+  border-right: 1px solid var(--line-soft);
+  background: var(--surface);
+}
+.grid__col[data-past='true'],
+.grid__alldaycell[data-past='true'] {
+  background: var(--past-bg);
+}
+.grid__col[data-today='true'],
+.grid__alldaycell[data-today='true'],
+.grid__headcell[data-today='true'] {
+  background: var(--today-bg);
+}
+/* 일 뷰 — 열이 하나뿐이라 배경색이 화면 전체가 된다. 흰 바탕을 유지하고
+   오늘 여부는 날짜 글자색과 현재 시각선이 알려 준다. */
+.grid[data-single='true'] .grid__col[data-past='true'],
+.grid[data-single='true'] .grid__col[data-today='true'],
+.grid[data-single='true'] .grid__alldaycell[data-past='true'],
+.grid[data-single='true'] .grid__alldaycell[data-today='true'],
+.grid[data-single='true'] .grid__headcell[data-today='true'] {
+  background: var(--surface);
+}
+.grid__block {
+  position: absolute;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 12px;
+  line-height: 1.3;
+  color: #fff;
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  text-align: left;
+}
+.grid__block[data-sel='true'] {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+.grid__now {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 2px solid var(--warn);
+  z-index: 2;
+  pointer-events: none;
+}
+.grid__now::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--warn);
+}
+
+/* ── 타임라인 ────────────────────────────────────────────────────── */
+.gantt {
+  display: grid;
+  grid-template-columns: var(--tree-w, 260px) 1fr;
+  height: 100%;
+  min-height: 0;
+}
+.gantt__tree {
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: 48px 1fr;
+}
+.gantt__treehead,
+.gantt__axis {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  display: flex;
+  align-items: flex-end;
+}
+.gantt__treehead {
+  padding: 0 10px 6px;
+}
+.gantt__treebody,
+.gantt__rows {
+  overflow: hidden;
+}
+.gantt__right {
+  display: grid;
+  grid-template-rows: 48px 1fr;
+  min-width: 0;
+  overflow: hidden;
+}
+.gantt__scroll {
+  overflow: auto;
+  position: relative;
+}
+.gantt__axis {
+  overflow: hidden;
+  position: relative;
+  display: block;
+}
+.gantt__axisinner {
+  position: relative;
+  height: 48px;
+}
+.gantt__tickmajor {
+  position: absolute;
+  top: 0;
+  height: 24px;
+  border-left: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 5px;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+.gantt__tickminor {
+  position: absolute;
+  top: 24px;
+  height: 24px;
+  border-left: 1px solid var(--line-soft);
+  font-family: var(--f-mono);
+  font-size: 11px;
+  padding: 3px 4px;
+  white-space: nowrap;
+  color: var(--ink-3);
+}
+.gantt__section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 10px;
+  background: var(--sunken);
+  border-bottom: 1px solid var(--line-soft);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  cursor: pointer;
+  border-left: 3px solid var(--h);
+  width: 100%;
+  border-top: 0;
+  border-right: 0;
+  text-align: left;
+}
+.gantt__sectionname {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--h);
+  font-weight: 700;
+}
+.gantt__sectionspacer {
+  height: 28px;
+  background: var(--sunken);
+  border-bottom: 1px solid var(--line-soft);
+}
+.gantt__row {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 14px;
+  min-width: 0;
+  cursor: pointer;
+  background: transparent;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+}
+.gantt__row:hover {
+  background: var(--sunken);
+}
+.gantt__row[data-sel='true'] {
+  background: var(--accent-soft);
+}
+.gantt__rowtitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.gantt__twisty {
+  width: 15px;
+  height: 15px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0;
+  flex: none;
+}
+.gantt__track {
+  height: 36px;
+  border-bottom: 1px solid var(--line-soft);
+  position: relative;
+}
+.gantt__bar {
+  position: absolute;
+  top: 6px;
+  height: 24px;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: grab;
+  border: 0;
+  padding: 0;
+  min-width: 6px;
+  color: #fff;
+  font-size: 12px;
+  text-align: left;
+}
+.gantt__bar:active {
+  cursor: grabbing;
+}
+.gantt__bar[data-sel='true'] {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+.gantt__bar[data-done='true'] {
+  filter: saturate(0.4);
+}
+.gantt__barfill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: rgba(255, 255, 255, 0.3);
+}
+.gantt__barlabel {
+  position: relative;
+  padding: 0 8px;
+  line-height: 24px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+.gantt__handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: ew-resize;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  z-index: 2;
+}
+.gantt__handle:hover {
+  background: rgba(255, 255, 255, 0.45);
+}
+.gantt__today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 2px solid var(--today);
+  z-index: 4;
+  pointer-events: none;
+}
+.gantt__msline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1px dashed var(--ink-3);
+  z-index: 3;
+  pointer-events: none;
+}
+.gantt__msmark {
+  position: absolute;
+  top: 6px;
+  width: 11px;
+  height: 11px;
+  transform: translateX(-50%) rotate(45deg);
+  background: var(--ink-2);
+  border: 1px solid var(--surface);
+  z-index: 5;
+}
+.gantt__msmark[data-late='true'] {
+  background: var(--warn);
+}
+
+/* ── 로드맵 뷰 (년/월/주 3단 헤더 + 구분별 띠) ───────────────────── */
+.rm {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--tree-w, 200px) 1fr;
+  grid-template-rows: var(--rm-head-h) 1fr;
+  grid-template-areas:
+    'corner head'
+    'tree body';
+  height: 100%;
+  min-height: 0;
+  background: var(--surface);
+}
+
+.rm__corner {
+  grid-area: corner;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-size: 13px;
+  /* 축과 같은 바탕 — 한쪽만 채우면 머리칸이 따로 떠 보인다 */
+  background: var(--axis-bg);
+  border-right: 1px solid var(--frame-line);
+  /* 툴바 아랫선 · 트리 오른선과 같은 프레임 선 — 오른쪽 .rm__head 와 이어진다 */
+  border-bottom: 1px solid var(--frame-line);
+  z-index: 4;
+}
+.rm__corner > .mono {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+
+.rm__head {
+  grid-area: head;
+  overflow: hidden;
+  /* 마일스톤 줄의 윗선 — 프레임 선 굵기·색을 화면 전체와 맞춘다 */
+  border-bottom: 1px solid var(--frame-line);
+  /* 칸마다 채우지 않고 바탕 한 장으로 두므로 눈금선 방식은 그대로다 */
+  background: var(--axis-bg);
+}
+.rm__headinner {
+  position: relative;
+  height: var(--rm-head-h);
+}
+
+/*
+ * 3단 축 — 타임라인(.gantt__axis)과 같은 방식이다.
+ * 칸을 색으로 채우지 않고 왼쪽 눈금선 하나에 라벨을 붙인다. 채운 칸은
+ * 경계가 색으로 드러나지만, 선 방식은 라벨 시작점이 곧 그 구간의 시작이라
+ * 막대와 눈금을 눈으로 맞추기 쉽다.
+ * 위로 갈수록 굵은 선 — 년이 가장 거칠고 주가 가장 잔 단위다.
+ */
+/* 연도만 가운데 정렬 — 아래 두 단은 눈금선 방식 그대로 왼쪽에 붙는다 */
+.rm__year {
+  position: absolute;
+  top: 0;
+  height: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  border-left: 1px solid var(--axis-line);
+  border-bottom: 1px solid var(--axis-line);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.rm__month {
+  position: absolute;
+  top: 17px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  padding: 0 5px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink-2);
+  border-left: 1px solid var(--axis-line);
+  border-bottom: 1px solid var(--axis-line);
+  background: transparent;
+  overflow: hidden;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* 해가 바뀌는 자리만 진하게 — 연도 라벨이 잘려도 경계는 보인다 */
+.rm__month[data-newyear='true'] {
+  border-left-color: var(--ink-3);
+}
+
+.rm__week {
+  position: absolute;
+  top: 35px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--ink-3);
+  background: transparent;
+  border-left: 1px solid var(--axis-line-soft);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.rm__tree {
+  grid-area: tree;
+  overflow: hidden;
+  /* 캔버스와 갈라지는 기준선 — 머리칸(.rm__corner)과 같아야 이어져 보인다 */
+  border-right: 1px solid var(--frame-line);
+  background: var(--surface);
+}
+.rm__treeband {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--line-soft);
+  position: relative;
+}
+/* 1열 — 프로젝트. 여러 단계 띠에 걸치는 세로 색 띠.
+   한글 세로쓰기는 vertical-rl + text-orientation: upright 로 써야
+   글자가 바로 선 채 위에서 아래로 읽힌다.
+   rotate(180deg) 를 더하면 글자가 뒤집힌다 — 쓰지 않는다. */
+/* 프로젝트 칸. 세로쓰기는 이름이 길어지면 읽기 어려워 가로 칸으로 고정한다. */
+.rm__project {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--proj-w, 140px);
+  display: flex;
+  align-items: center;
+  padding: 0 24px 0 12px;
+  overflow: hidden;
+  z-index: 1;
+}
+.rm__projectname {
+  flex: 1;
+  min-width: 0;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 설정 진입점. 칸 전체를 버튼으로 두면 무엇이 눌리는지 알 수 없다 */
+.rm__gear {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 18px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+.rm__gear:hover {
+  background: rgba(255, 255, 255, 0.24);
+  color: #fff;
+}
+.rm__gear:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+/* 2열 — 단계 */
+.rm__phase {
+  border-left: 1px solid var(--hdr-line);
+  position: absolute;
+  left: var(--proj-w, 140px);
+  top: 0;
+  bottom: 0;
+  width: calc(var(--tree-w, 200px) - var(--proj-w, 140px));
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  background: var(--hdr-week);
+  font-size: 12px;
+  color: var(--hdr-ink);
+  font-weight: 500;
+  line-height: 1.3;
+  overflow: hidden;
+}
+.rm__phasename {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rm__body {
+  grid-area: body;
+  overflow: auto;
+  background: var(--surface);
+}
+.rm__canvas {
+  position: relative;
+}
+
+/* 오늘 왼쪽은 지나간 구간 — 배경으로 한 겹 눌러 둔다 */
+.rm__past {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--past-bg);
+  z-index: 0;
+  pointer-events: none;
+}
+.rm__grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.rm__gridweek {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1px solid var(--line-soft);
+}
+.rm__gridmonth {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1px solid var(--line);
+}
+.rm__gridmonth[data-newyear='true'] {
+  border-left-color: var(--ink-3);
+}
+
+.rm__band {
+  position: relative;
+  border-bottom: 1px solid var(--line-soft);
+}
+/* 프로젝트가 끝나는 줄 — 업무구분 사이보다 진하고 영역 경계보다는 연하다 */
+.rm__treeband[data-projectend='true'],
+.rm__band[data-projectend='true'] {
+  border-bottom-color: var(--group-line);
+}
+
+.rm__bar {
+  position: absolute;
+  height: 22px;
+  border: 1px solid var(--bar-outline);
+  border-radius: 8px;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  color: #fff;
+  font-size: 12px;
+  text-align: center;
+  z-index: 2;
+}
+.rm__bar:hover {
+  filter: brightness(1.1);
+}
+.rm__bar[data-sel='true'] {
+  outline: 2px solid var(--ink);
+  outline-offset: 1.5px;
+}
+.rm__bar[data-done='true'] {
+  filter: saturate(0.35);
+}
+/* 지난 일정 — 투명도 40%(opacity 0.6), 채도 40%.
+   한 걸음 물러나되 제목은 읽히는 선이다. */
+.rm__bar[data-past='true'] {
+  opacity: 0.6;
+  filter: saturate(0.4);
+}
+.rm__bar[data-past='true'][data-done='true'] {
+  opacity: 0.5;
+  filter: saturate(0.2);
+}
+.rm__bar[data-past='true']:hover {
+  opacity: 0.9;
+}
+/* 고른 막대는 지나갔더라도 또렷하게 보여야 한다 */
+.rm__bar[data-sel='true'] {
+  opacity: 1;
+}
+.rm__barfill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: rgba(255, 255, 255, 0.22);
+}
+.rm__barlabel {
+  position: relative;
+  display: block;
+  line-height: 20px;
+  padding: 0 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rm__today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 2px solid var(--today);
+  z-index: 5;
+  pointer-events: none;
+}
+/* 선만 있으면 무슨 선인지 모른다 — 마일스톤 줄에 라벨을 붙인다 */
+.rm__todaychip {
+  position: absolute;
+  bottom: 0;
+  transform: translateX(-50%);
+  background: var(--today);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 3px 8px 4px;
+  /* 위는 둥글게, 바닥은 평평하게 — 아래로 내려가는 선의 머리처럼 보인다 */
+  border-radius: 8px 8px 2px 2px;
+  z-index: 7;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.rm__msline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1px dashed var(--ink-3);
+  z-index: 3;
+  pointer-events: none;
+}
+.rm__msline[data-late='true'] {
+  border-left-color: var(--warn);
+}
+
+/* 캔버스 맨 위 고정 줄. 마커가 여기 모여 있어 찾기 쉽고 누르기 쉽다 */
+.rm__mslane {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  background: var(--surface);
+  border-bottom: 1px solid var(--frame-line);
+}
+.rm__msempty {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.rm__msmark {
+  position: absolute;
+  bottom: 5px;
+  width: 11px;
+  height: 11px;
+  padding: 0;
+  transform: translateX(-50%) rotate(45deg);
+  background: var(--ink-2);
+  border: 1px solid var(--surface);
+  border-radius: 2px;
+  cursor: pointer;
+  z-index: 9;
+}
+.rm__msmark:hover,
+.rm__msmark:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.rm__msmark[data-late='true'] {
+  background: var(--warn);
+}
+.rm__msmark[data-reached='true'] {
+  background: var(--accent);
+}
+
+/* 공간이 남을 때만 제목을 옆에 적는다. 겹치면 카드에서 읽으면 된다 */
+.rm__mstext {
+  position: absolute;
+  bottom: 4px;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  pointer-events: none;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 8;
+}
+
+/* ── 호버 카드 ── */
+.rm__mscard {
+  position: absolute;
+  top: 24px;
+  transform: translateX(-50%);
+  width: 232px;
+  display: grid;
+  gap: 5px;
+  padding: 11px 13px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 28px -10px rgba(0, 0, 0, 0.35);
+  z-index: 20;
+  pointer-events: none;
+  white-space: normal;
+}
+.rm__mscardtitle {
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+.rm__mscardrow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.rm__mscardrow b {
+  color: var(--ink);
+  font-weight: 600;
+  text-align: right;
+}
+.rm__mscardbar {
+  display: block;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--sunken);
+  overflow: hidden;
+  margin-top: 2px;
+}
+.rm__mscardbar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.rm__mscarddesc {
+  font-size: 12px;
+  color: var(--ink-2);
+  line-height: 1.5;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 6px;
+}
+.rm__mscardhint {
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+/* 좌측 트리의 마일스톤 줄 */
+.rm__treeband--ms {
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  border-bottom: 1px solid var(--frame-line);
+}
+.rm__treeband--ms {
+  align-items: flex-end;
+  padding-bottom: 3px;
+}
+.rm__mslabel {
+  display: flex;
+  /* 글자 밑선이 아니라 가운데로 맞춘다 — 뱃지는 위아래 여백을 가진 상자라
+     밑선을 기준으로 삼으면 글자보다 아래로 처진다. */
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+  font-size: 12px;
+  line-height: 14px;
+  font-weight: 650;
+  color: var(--hdr-ink);
+}
+
+/* ── 마일스톤 뷰 ─────────────────────────────────────────────────── */
+.ms {
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+.ms__proj {
+  padding: 14px 16px;
+}
+.ms__projname {
+  font-weight: 640;
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+.ms__track {
+  display: grid;
+  gap: 8px;
+}
+.ms__item {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background: var(--ground);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  color: inherit;
+}
+.ms__item:hover {
+  border-color: var(--line);
+}
+.ms__date {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  line-height: 1.25;
+}
+.ms__title {
+  font-size: 14px;
+  font-weight: 560;
+}
+.ms__meta {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.ms__ring {
+  --pct: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+  background: conic-gradient(var(--accent) calc(var(--pct) * 1%), var(--sunken) 0);
+}
+.ms__ring > span {
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+}
+
+/* ── 상세 패널 ───────────────────────────────────────────────────── */
+.detail {
+  position: absolute;
+  top: var(--toolbar-h);
+  right: 0;
+  bottom: var(--footbar-h);
+  width: min(400px, 100%);
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  box-shadow: -10px 0 30px -22px rgba(0, 0, 0, 0.55);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  z-index: 20;
+  overflow: hidden;
+}
+
+/* 열릴 때 한 번만. 값이 바뀔 때마다 다시 미끄러지면 산만하다 —
+   그래서 애니메이션을 별도 클래스에 두고 처음 그릴 때만 붙인다. */
+.detail--enter {
+  animation: detail-in 0.22s cubic-bezier(0.22, 0.8, 0.28, 1);
+}
+@keyframes detail-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0.4;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.detail__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 8px 14px;
+  background: var(--sidebar-bg);
+  border-bottom: 1px solid var(--line);
+}
+.detail__headtitle {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+/* 저장 안 된 변경이 있음을 머리에서 알린다 */
+.detail__badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+.detail__hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.detail__hint b {
+  color: var(--ink-2);
+}
+.detail__error {
+  font-size: 13px;
+  color: var(--warn);
+}
+.detail__body {
+  overflow-y: auto;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+.detail__foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--sidebar-bg);
+}
+.detail__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.detail__conflict {
+  background: var(--warn-soft);
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  border-radius: var(--radius);
+  padding: 9px 11px;
+  font-size: 13px;
+  display: grid;
+  gap: 6px;
+}
+.detail__comment {
+  border-top: 1px solid var(--line-soft);
+  padding-top: 8px;
+  font-size: 13px;
+}
+.detail__comment b {
+  color: var(--ink);
+}
+.detail__comment time {
+  color: var(--ink-3);
+  font-size: 12px;
+  margin-left: 6px;
+}
+
+/* ── 퀵 입력 ─────────────────────────────────────────────────────── */
+.quick {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 12, 16, 0.4);
+  display: grid;
+  place-items: start center;
+  padding-top: 14vh;
+  z-index: 40;
+}
+.quick__box {
+  width: min(560px, 92vw);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+.quick__input {
+  width: 100%;
+  border: 0;
+  padding: 15px 17px;
+  font-size: 17px;
+  background: transparent;
+  outline: none;
+}
+.quick__preview {
+  border-top: 1px solid var(--line-soft);
+  padding: 10px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  background: var(--sunken);
+}
+.quick__hint {
+  padding: 9px 16px;
+  font-size: 12px;
+  color: var(--ink-3);
+  border-top: 1px solid var(--line-soft);
+  font-family: var(--f-mono);
+}
+
+/* ── 토스트 ──────────────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--ground);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  z-index: 60;
+  box-shadow: var(--shadow);
+}
+
+@media (max-width: 820px) {
+  .shell {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'canvas'
+      'foot';
+  }
+  .sidebar {
+    display: none;
+  }
+  .detail {
+    width: 100vw;
+  }
+}
+
+/* ── 프로젝트 설정 팝오버 ─────────────────────────────────────────── */
+.rm__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+}
+.rm__popover {
+  position: absolute;
+  left: 40px;
+  z-index: 31;
+  width: 268px;
+  display: grid;
+  gap: 11px;
+  padding: 13px 15px 15px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px -14px rgba(0, 0, 0, 0.4);
+}
+.rm__popoverhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.rm__popoverfoot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rm__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.rm__swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.rm__swatch[data-on='true'] {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--surface);
+}
+
+/* ── 일정 추가 폼 ─────────────────────────────────────────────────
+   상세 패널과 같은 필드·순서를 쓴다. 만들 때와 고칠 때 화면이 다르면
+   같은 값을 두 번 배우게 된다. */
+.qf {
+  width: min(560px, 94vw);
+  max-height: min(82vh, 760px);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+.qf__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 12px 12px 18px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.qf__title {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.qf__body {
+  overflow-y: auto;
+  padding: 16px 18px;
+  display: grid;
+  gap: 13px;
+  align-content: start;
+}
+.qf__hint {
+  margin: -4px 0 0;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.qf__hint b {
+  color: var(--ink-2);
+}
+.qf__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--line-soft);
+  background: var(--sidebar-bg);
+}
+.qf__error {
+  color: var(--warn);
+  font-size: 13px;
+}
+
+/* ── 담당자별 업무현황 ───────────────────────────────────────────
+   한 사람이 한 줄. 왼쪽은 숫자, 오른쪽은 그 숫자가 어느 시점에
+   몰려 있는지 보여 주는 띠다. 둘을 나란히 두어야 "왜 바쁜지"가 읽힌다. */
+.wl {
+  --wl-name: 150px;
+  --wl-stat: 92px;
+  display: grid;
+  align-content: start;
+  background: var(--surface);
+  min-height: 100%;
+}
+.wl__head,
+.wl__row {
+  display: grid;
+  grid-template-columns: var(--wl-name) var(--wl-stat) var(--wl-stat) var(--wl-stat) 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.wl__head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 32px;
+  background: var(--hdr-week);
+  border-bottom: 1px solid var(--frame-line);
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hdr-ink);
+}
+.wl__headstrip {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 한 사람 = 한 묶음(타임라인 + 진행중 목록). 경계선은 묶음이 갖는다 —
+   줄마다 선을 그으면 어디까지가 한 사람인지 읽히지 않는다. */
+.wl__group {
+  border-bottom: 1px solid var(--frame-line);
+}
+.wl__group[data-empty='true'] {
+  opacity: 0.55;
+}
+.wl__row {
+  min-height: 46px;
+  border-bottom: 0;
+}
+.wl__row:hover {
+  background: var(--sidebar-hover);
+}
+
+/* ── 진행 중인 업무 목록 ─────────────────────────────────────────
+   담당자 줄 아래로 한 단 들여써서 소속을 드러낸다. */
+.wl__tasks {
+  padding: 0 14px 8px calc(14px + var(--wl-name) + 10px);
+  display: grid;
+  gap: 3px;
+}
+.wl__nowork {
+  margin: 0;
+  padding: 2px 0 6px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.wl__task {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto auto 132px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-left: 3px solid var(--line);
+  border-radius: 0 5px 5px 0;
+  background: var(--sunken);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.wl__task:hover {
+  background: var(--sidebar-hover);
+}
+.wl__task[data-sel='true'] {
+  outline: 2px solid var(--today);
+  outline-offset: -2px;
+}
+/* 급한 것부터 눈에 들어오게 — 왼쪽 띠 색이 상태다.
+   툴바의 '지연' 스위치를 끄면 이 강조도 함께 꺼진다 — 막대만 꺼지고
+   목록이 빨간 채로 남으면 같은 스위치가 두 가지로 보인다. */
+.wl[data-mark-late='true'] .wl__task[data-kind='blocked'],
+.wl[data-mark-late='true'] .wl__task[data-kind='late'] {
+  border-left-color: var(--warn);
+  background: var(--warn-soft);
+}
+.wl__taskdot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  border: 1px solid var(--bar-outline);
+}
+.wl__taskmain {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.wl__tasktitle {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wl__taskwhere {
+  flex: none;
+  font-size: 11px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.wl__taskdate {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.wl__taskdue {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-2);
+  white-space: nowrap;
+  min-width: 62px;
+  text-align: right;
+}
+.wl[data-mark-late='true'] .wl__task[data-kind='blocked'] .wl__taskdue,
+.wl[data-mark-late='true'] .wl__task[data-kind='late'] .wl__taskdue {
+  color: var(--warn);
+}
+.wl__taskbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.wl__taskbar > .wl__meter {
+  flex: 1;
+}
+
+@media (max-width: 1100px) {
+  /* 좁아지면 들여쓰기를 버린다 — 목록이 읽히는 것이 먼저다 */
+  .wl__tasks {
+    padding-left: 14px;
+  }
+  .wl__task {
+    grid-template-columns: 8px minmax(0, 1fr) auto 104px;
+  }
+  .wl__taskdate {
+    display: none;
+  }
+}
+
+.wl__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.wl__avatar {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 13px;
+}
+.wl__nametext {
+  font-size: 14px;
+  font-weight: 560;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wl__counts {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.wl__counts > b {
+  font-weight: 700;
+  margin-right: 2px;
+}
+.wl__none {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.wl__progress,
+.wl__load {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.wl__meter {
+  flex: 1;
+  min-width: 0;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--sunken);
+  overflow: hidden;
+}
+.wl__meter > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.wl__meter--load > span {
+  background: var(--navy);
+}
+.wl__pct {
+  flex: none;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+/* 하루에 겹치는 최대 건수 — 1 을 넘을 때만 보인다 */
+.wl__peak {
+  margin-left: 3px;
+  font-style: normal;
+  color: var(--warn);
+  font-weight: 700;
+}
+
+.wl__strip {
+  position: relative;
+  min-width: 0;
+  border-left: 1px solid var(--line-soft);
+}
+.wl__bar {
+  position: absolute;
+  height: 12px;
+  border: 1px solid var(--bar-outline);
+  border-radius: 999px;
+  padding: 0;
+  cursor: pointer;
+}
+.wl__bar:hover {
+  filter: brightness(1.12);
+}
+.wl__bar[data-sel='true'] {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+.wl__bar[data-done='true'] {
+  filter: saturate(0.35);
+}
+.wl__today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 2px solid var(--today);
+  pointer-events: none;
+}
+.wl__more {
+  position: absolute;
+  right: 4px;
+  bottom: 2px;
+  font-size: 10px;
+  color: var(--ink-3);
+}
+
+@media (max-width: 1100px) {
+  .wl {
+    --wl-name: 120px;
+    --wl-stat: 74px;
+  }
+}

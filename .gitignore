@@ -25,3 +25,15 @@ dist-ssr
 
 # bkit
 .bkit/
+
+# scheduler app (자체 package.json 으로 독립 관리)
+apps/scheduler/node_modules/
+apps/scheduler/.next/
+apps/scheduler/.env*
+!apps/scheduler/.env.example
+
+# UI 미리보기 산출물 (Artifact 게시용)
+.preview/
+
+# Claude Code 로컬 설정 (머신별 경로 · 세션 허용목록)
+.claude/
