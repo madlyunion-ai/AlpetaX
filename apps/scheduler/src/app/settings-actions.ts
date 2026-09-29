@@ -352,3 +352,54 @@ export async function revokeInvitation(workspaceId: string, id: string): Promise
   touch();
   return ok();
 }
+
+/* ── 승인 요청 ──────────────────────────────────────────────────────
+   승인·거절 판정은 DB 함수 안에서 한다. 서버 액션에서 역할만 보고 통과시키면
+   같은 규칙이 두 곳에 생기고, 한쪽만 고쳐지는 날이 온다. */
+
+export async function approveRequest(
+  workspaceId: string,
+  requestId: string,
+  role: MemberRole = 'member',
+): Promise<ActionResult> {
+  const denied = await requireAdmin(workspaceId);
+  if (denied) return fail(denied);
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('approve_access_request', {
+    req_id: requestId,
+    as_role: role,
+  });
+  if (error) return fail(error.message);
+  touch();
+  return ok();
+}
+
+export async function rejectRequest(
+  workspaceId: string,
+  requestId: string,
+  reason?: string,
+): Promise<ActionResult> {
+  const denied = await requireAdmin(workspaceId);
+  if (denied) return fail(denied);
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('reject_access_request', {
+    req_id: requestId,
+    reason: reason?.trim() || null,
+  });
+  if (error) return fail(error.message);
+  touch();
+  return ok();
+}
+
+export async function deleteRequest(workspaceId: string, requestId: string): Promise<ActionResult> {
+  const denied = await requireAdmin(workspaceId);
+  if (denied) return fail(denied);
+
+  const supabase = await createClient();
+  const { error } = await supabase.from('access_requests').delete().eq('id', requestId);
+  if (error) return fail(error.message);
+  touch();
+  return ok();
+}

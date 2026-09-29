@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { TeamSyncLogo } from '@/app/w/[slug]/logo';
 
@@ -90,6 +91,19 @@ function LoginForm() {
             )}
           </form>
         )}
+
+        {/* 승인받지 못한 사람에게 막다른 길을 주지 않는다 — 여기서 신청한다 */}
+        <p
+          style={{
+            marginTop: 18,
+            paddingTop: 14,
+            borderTop: '1px solid var(--line-soft)',
+            fontSize: 13,
+            color: 'var(--ink-2)',
+          }}
+        >
+          아직 승인받지 않으셨나요? <Link href="/request">승인 요청하기</Link>
+        </p>
       </div>
     </main>
   );

@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { Membership, Phase, Project, Team, Workspace } from '@/lib/schedule-core/types';
-import { SettingsClient, type Invitation } from './settings-client';
+import { SettingsClient, type AccessRequest, type Invitation } from './settings-client';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,6 +66,17 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
         .returns<Invitation[]>()
     : { data: [] as Invitation[] };
 
+  // RLS 가 관리자에게만 열어 주지만, 조회 자체를 걸러 두면 일반 멤버의 화면에서
+  // 헛도는 요청이 하나 줄어든다.
+  const { data: requests } = canManage
+    ? await supabase
+        .from('access_requests')
+        .select('id, email, display_name, note, status, created_at, decided_at, decided_note')
+        .eq('workspace_id', workspace.id)
+        .order('created_at', { ascending: false })
+        .returns<AccessRequest[]>()
+    : { data: [] as AccessRequest[] };
+
   return (
     <SettingsClient
       workspace={workspace}
@@ -77,6 +88,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
       phases={phases ?? []}
       projects={projects ?? []}
       invitations={invitations ?? []}
+      requests={requests ?? []}
     />
   );
 }

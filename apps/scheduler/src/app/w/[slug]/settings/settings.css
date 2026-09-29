@@ -253,3 +253,89 @@
     flex-wrap: wrap;
   }
 }
+
+/* ── 승인요청 ─────────────────────────────────────────────────────
+   한 줄에 사람 하나. 이름·주소·메모·시각·버튼이 한 덩어리로 읽혀야
+   "이 사람을 들여보낼까" 를 한 번에 판단할 수 있다. */
+.req {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.req__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'who  when'
+    'note note'
+    'act  act';
+  gap: 6px 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.req--done .req__item {
+  background: var(--sunken);
+  border-color: var(--line-soft);
+}
+.req__who {
+  grid-area: who;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.req__name {
+  font-size: 14px;
+}
+.req__mail {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.req__note {
+  grid-area: note;
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.req__when {
+  grid-area: when;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.req__act,
+.req__reject {
+  grid-area: act;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.req__act > .select {
+  width: auto;
+  min-width: 86px;
+}
+.req__reject {
+  margin-top: 4px;
+}
+.req__reject > .input {
+  flex: 1;
+  min-width: 180px;
+}
+
+/* 탭 라벨 옆 대기 건수 */
+.set__navitem > .badge {
+  margin-left: 6px;
+}

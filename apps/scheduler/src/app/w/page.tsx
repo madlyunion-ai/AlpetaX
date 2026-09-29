@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { NewWorkspaceForm } from './new-workspace-form';
+import { TeamSyncLogo } from './[slug]/logo';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +12,14 @@ export default async function WorkspacePicker() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
+
+  /*
+   * 승인된 사람에게는 초대가 만들어져 있다. 메일을 보내지 않으므로 토큰 링크를
+   * 건넬 방법이 없어, 로그인한 주소로 남아 있는 초대를 스스로 집어 간다.
+   * 멤버십을 읽기 전에 해야 한다 — 순서가 바뀌면 승인 직후 첫 로그인에서
+   * "소속 없음" 화면을 한 번 보고 새로고침해야 한다.
+   */
+  await supabase.rpc('claim_invitations');
 
   const { data: memberships } = await supabase
     .from('memberships')
@@ -25,46 +34,78 @@ export default async function WorkspacePicker() {
   // 워크스페이스가 하나뿐이면 고르는 화면을 보여줄 이유가 없다
   if (list.length === 1) redirect(`/w/${list[0].slug}`);
 
+  // 소속이 없다 — 아직 승인 전이거나, 승인이 거절된 경우다.
+  // 워크스페이스 만들기를 보여 주면 승인 절차를 우회하는 길로 읽힌다(서버는
+  // 막지만, 눌러 보고 거절당하는 경험 자체가 나쁘다).
+  if (list.length === 0) {
+    return (
+      <main style={{ display: 'grid', placeItems: 'center', minHeight: '100dvh', padding: '2rem' }}>
+        <div className="panel" style={{ width: 'min(420px, 100%)', padding: '2rem' }}>
+          <TeamSyncLogo style={{ display: 'block', width: 150, height: 'auto', marginBottom: 20 }} />
+          <h1 style={{ fontSize: 22, margin: '0 0 .25rem', letterSpacing: '-.02em' }}>
+            승인 대기 중입니다
+          </h1>
+          <p style={{ color: 'var(--ink-2)', fontSize: 13, lineHeight: 1.7, margin: '0 0 1.25rem' }}>
+            <b>{user.email}</b> 로 로그인하셨지만 아직 참여할 수 있는 워크스페이스가 없습니다.
+            <br />
+            관리자가 승인하면 이 화면에서 바로 들어가실 수 있습니다.
+          </p>
+          <div style={{ display: 'grid', gap: 8 }}>
+            <Link className="btn" href="/w">
+              다시 확인
+            </Link>
+            <Link className="btn btn--ghost" href="/request" style={{ fontSize: 13 }}>
+              아직 신청하지 않았다면 — 승인 요청하기
+            </Link>
+            <form action="/auth/signout" method="post">
+              <button
+                className="btn btn--ghost"
+                style={{ width: '100%', fontSize: 12, color: 'var(--ink-3)' }}
+              >
+                로그아웃
+              </button>
+            </form>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main style={{ display: 'grid', placeItems: 'center', minHeight: '100dvh', padding: '2rem' }}>
       <div style={{ width: 'min(460px, 100%)', display: 'grid', gap: 16 }}>
         <div>
-          <p className="mono" style={{ margin: 0 }}>
-            TeamSync
-          </p>
+          <TeamSyncLogo style={{ display: 'block', width: 140, height: 'auto', marginBottom: 12 }} />
           <h1 style={{ fontSize: 22, margin: '.35rem 0 0', letterSpacing: '-.02em' }}>
-            {list.length ? '워크스페이스 선택' : '워크스페이스 만들기'}
+            워크스페이스 선택
           </h1>
-          <p style={{ color: 'var(--ink-2)', fontSize: 13, margin: '.25rem 0 0' }}>
-            {user.email}
-          </p>
+          <p style={{ color: 'var(--ink-2)', fontSize: 13, margin: '.25rem 0 0' }}>{user.email}</p>
         </div>
 
-        {list.length > 0 && (
-          <div className="panel" style={{ overflow: 'hidden' }}>
-            {list.map((ws) => (
-              <Link
-                key={ws.id}
-                href={`/w/${ws.slug}`}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                  padding: '12px 16px',
-                  borderBottom: '1px solid var(--line-soft)',
-                  textDecoration: 'none',
-                  color: 'var(--ink)',
-                }}
-              >
-                <span style={{ fontWeight: 600 }}>{ws.name}</span>
-                <span className="chip">{ws.role}</span>
-              </Link>
-            ))}
-          </div>
-        )}
+        <div className="panel" style={{ overflow: 'hidden' }}>
+          {list.map((ws) => (
+            <Link
+              key={ws.id}
+              href={`/w/${ws.slug}`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '12px 16px',
+                borderBottom: '1px solid var(--line-soft)',
+                textDecoration: 'none',
+                color: 'var(--ink)',
+              }}
+            >
+              <span style={{ fontWeight: 600 }}>{ws.name}</span>
+              <span className="chip">{ws.role}</span>
+            </Link>
+          ))}
+        </div>
 
-        <NewWorkspaceForm />
+        {/* 소유자만 더 만들 수 있다 — 서버에서도 같은 규칙으로 막는다 */}
+        {list.some((w) => w.role === 'owner') && <NewWorkspaceForm />}
 
         <form action="/auth/signout" method="post">
           <button className="btn btn--ghost" style={{ fontSize: 12, color: 'var(--ink-3)' }}>

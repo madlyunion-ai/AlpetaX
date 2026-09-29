@@ -44,3 +44,7 @@ deploy/node_modules/
 deploy/.vercel/
 apps/scheduler/.vercel/
 deploy/.provisioned.json
+
+.vercel
+.env*
+deploy/.login-link.txt

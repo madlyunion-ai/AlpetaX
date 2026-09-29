@@ -15,12 +15,15 @@ import {
 } from '@/lib/schedule-core/types';
 import { inviteMember } from '../../../actions';
 import {
+  approveRequest,
   archiveProject,
   createPhase,
   createTeam,
   deletePhase,
+  deleteRequest,
   deleteTeam,
   movePhase,
+  rejectRequest,
   removeMember,
   revokeInvitation,
   setTeamMembers,
@@ -30,6 +33,17 @@ import {
   updateTeam,
 } from '../../../settings-actions';
 import './settings.css';
+
+export interface AccessRequest {
+  id: string;
+  email: string;
+  display_name: string;
+  note: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  decided_at: string | null;
+  decided_note: string | null;
+}
 
 export interface Invitation {
   id: string;
@@ -50,6 +64,7 @@ interface Props {
   phases: Phase[];
   projects: Project[];
   invitations: Invitation[];
+  requests: AccessRequest[];
 }
 
 /** 새로 만들 때 돌아가며 집어 주는 색. 매번 같은 파랑이 나오지 않게 한다. */
@@ -72,18 +87,20 @@ const PALETTE = [
   '#7B8698',
 ];
 
-type Tab = 'phases' | 'teams' | 'projects' | 'members';
+type Tab = 'phases' | 'teams' | 'projects' | 'members' | 'requests';
 
 const TAB_LABEL: Record<Tab, string> = {
   phases: '업무구분',
   teams: '팀',
   projects: '프로젝트',
   members: '멤버',
+  requests: '승인요청',
 };
 
 export function SettingsClient(props: Props) {
   const { workspace, canManage } = props;
   const [tab, setTab] = useState<Tab>('phases');
+  const pendingCount = props.requests.filter((r) => r.status === 'pending').length;
   const [toast, setToast] = useState<string | null>(null);
   const [, startTx] = useTransition();
   const mainRef = useQuietScroll<HTMLElement>();
@@ -117,6 +134,11 @@ export function SettingsClient(props: Props) {
           {(Object.keys(TAB_LABEL) as Tab[]).map((t) => (
             <button key={t} className="set__navitem" data-on={t === tab} onClick={() => setTab(t)}>
               {TAB_LABEL[t]}
+              {/* 대기 건수는 눌러 보기 전에 보여야 한다 — 들어가 봐야 아는
+                  숫자는 아무도 확인하지 않는다 */}
+              {t === 'requests' && pendingCount > 0 && (
+                <em className="badge badge--warn">{pendingCount}</em>
+              )}
             </button>
           ))}
         </nav>
@@ -126,6 +148,7 @@ export function SettingsClient(props: Props) {
           {tab === 'teams' && <TeamSection {...props} run={run} />}
           {tab === 'projects' && <ProjectSection {...props} run={run} />}
           {tab === 'members' && <MemberSection {...props} run={run} say={say} />}
+          {tab === 'requests' && <RequestSection {...props} run={run} />}
         </main>
       </div>
 
@@ -593,6 +616,143 @@ function MemberSection({
             받는 사람이 <b>초대받은 이메일 계정</b>으로 로그인해야 수락됩니다 — 링크가 유출돼도
             다른 계정으로는 들어올 수 없습니다.
           </p>
+        </>
+      )}
+    </section>
+  );
+}
+
+/* ── 승인요청 ───────────────────────────────────────────────────────
+   마스터가 이름과 이메일을 보고 들여보낼지 정한다.
+   처리된 요청도 남겨 둔다 — 누구를 언제 왜 거절했는지가 사라지면
+   같은 사람이 다시 신청했을 때 판단할 근거가 없다. */
+function RequestSection({
+  workspace,
+  requests,
+  canManage,
+  run,
+}: Props & { run: (fn: () => Promise<{ ok: boolean; error?: string }>, okMsg?: string) => void }) {
+  const [role, setRole] = useState<Record<string, MemberRole>>({});
+  const [rejecting, setRejecting] = useState<string | null>(null);
+  const [reason, setReason] = useState('');
+
+  const pending = requests.filter((r) => r.status === 'pending');
+  const decided = requests.filter((r) => r.status !== 'pending');
+
+  return (
+    <section>
+      <h2 className="set__h2">승인요청</h2>
+      <p className="set__lead">
+        로그인 화면의 <b>승인 요청하기</b>로 접수된 목록입니다. 승인하면 그 이메일로 로그인할 때
+        자동으로 멤버가 됩니다 — 따로 초대 링크를 보내지 않아도 됩니다.
+      </p>
+
+      {pending.length === 0 ? (
+        <p className="set__empty">대기 중인 요청이 없습니다.</p>
+      ) : (
+        <ul className="req">
+          {pending.map((r) => (
+            <li className="req__item" key={r.id}>
+              <div className="req__who">
+                <b className="req__name">{r.display_name}</b>
+                <span className="req__mail">{r.email}</span>
+              </div>
+              {r.note && <p className="req__note">{r.note}</p>}
+              <span className="req__when">{format(new Date(r.created_at), 'M월 d일 HH:mm')}</span>
+
+              {canManage && (
+                <div className="req__act">
+                  <select
+                    className="select"
+                    aria-label="역할"
+                    value={role[r.id] ?? 'member'}
+                    onChange={(e) => setRole({ ...role, [r.id]: e.target.value as MemberRole })}
+                  >
+                    {(['member', 'admin', 'guest'] as MemberRole[]).map((v) => (
+                      <option key={v} value={v}>
+                        {ROLE_LABEL[v]}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className="btn btn--primary"
+                    onClick={() =>
+                      run(
+                        () => approveRequest(workspace.id, r.id, role[r.id] ?? 'member'),
+                        `${r.display_name} 님을 승인했습니다.`,
+                      )
+                    }
+                  >
+                    승인
+                  </button>
+                  <button className="btn" onClick={() => { setRejecting(r.id); setReason(''); }}>
+                    거절
+                  </button>
+                </div>
+              )}
+
+              {rejecting === r.id && (
+                <div className="req__reject">
+                  <input
+                    className="input"
+                    placeholder="거절 사유 (선택) — 기록으로만 남습니다"
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    autoFocus
+                  />
+                  <button
+                    className="btn btn--danger"
+                    onClick={() =>
+                      run(() => {
+                        setRejecting(null);
+                        return rejectRequest(workspace.id, r.id, reason);
+                      }, '거절했습니다.')
+                    }
+                  >
+                    거절 확정
+                  </button>
+                  <button className="btn btn--ghost" onClick={() => setRejecting(null)}>
+                    취소
+                  </button>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {decided.length > 0 && (
+        <>
+          <h3 className="set__h3" style={{ marginTop: 24 }}>
+            처리된 요청
+          </h3>
+          <ul className="req req--done">
+            {decided.map((r) => (
+              <li className="req__item" key={r.id} data-status={r.status}>
+                <div className="req__who">
+                  <b className="req__name">{r.display_name}</b>
+                  <span className="req__mail">{r.email}</span>
+                  <span className={r.status === 'approved' ? 'badge' : 'badge badge--warn'}>
+                    {r.status === 'approved' ? '승인' : '거절'}
+                  </span>
+                </div>
+                {r.decided_note && <p className="req__note">사유: {r.decided_note}</p>}
+                <span className="req__when">
+                  {r.decided_at ? format(new Date(r.decided_at), 'M월 d일 HH:mm') : ''}
+                </span>
+                {canManage && (
+                  <div className="req__act">
+                    <button
+                      className="btn btn--ghost"
+                      onClick={() => run(() => deleteRequest(workspace.id, r.id), '기록을 지웠습니다.')}
+                    >
+                      기록 삭제
+                    </button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
         </>
       )}
     </section>
