@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import type { MemberRole } from '@/lib/schedule-core/types';
+import type { DisplayMode, MemberRole } from '@/lib/schedule-core/types';
 import type { ActionResult } from './actions';
 
 const ok = <T,>(data?: T): ActionResult<T> => ({ ok: true, data });
@@ -399,6 +399,26 @@ export async function deleteRequest(workspaceId: string, requestId: string): Pro
 
   const supabase = await createClient();
   const { error } = await supabase.from('access_requests').delete().eq('id', requestId);
+  if (error) return fail(error.message);
+  touch();
+  return ok();
+}
+
+/* ── 내 정보 ────────────────────────────────────────────────────────
+   멤버십의 update 정책은 관리자에게만 열려 있다. 스스로 역할을 올리지 못하게
+   한 것이므로, 이름과 표시 방식만 바꾸는 좁은 길을 DB 함수로 따로 냈다. */
+
+export async function updateMyProfile(
+  workspaceId: string,
+  displayName: string,
+  displayAs: DisplayMode,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('update_my_profile', {
+    ws: workspaceId,
+    new_name: displayName,
+    new_mode: displayAs,
+  });
   if (error) return fail(error.message);
   touch();
   return ok();

@@ -21,13 +21,27 @@ export interface Workspace {
   plan: string;
 }
 
+/** 자신을 이름으로 보일지 이메일로 보일지 — 본인이 고른다 */
+export type DisplayMode = 'name' | 'email';
+
 export interface Membership {
   id: string;
   workspace_id: string;
   user_id: string;
   role: MemberRole;
   display_name: string | null;
+  email: string | null;
+  display_as: DisplayMode;
   avatar_url: string | null;
+}
+
+/**
+ * 화면에 쓸 이름. 멤버를 부르는 모든 곳이 이 함수를 쓴다 —
+ * 한 화면은 이름, 다른 화면은 아이디로 보이면 같은 사람이 둘로 읽힌다.
+ */
+export function memberLabel(m: Pick<Membership, 'display_name' | 'email' | 'display_as'>): string {
+  if (m.display_as === 'email' && m.email) return m.email;
+  return m.display_name ?? m.email ?? '이름 없음';
 }
 
 export interface Team {

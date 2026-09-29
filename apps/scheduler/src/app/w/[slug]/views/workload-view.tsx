@@ -11,6 +11,7 @@ import {
   type WorkloadStat,
 } from '@/lib/schedule-core/workload';
 import type { DateRange } from '@/lib/schedule-core/range';
+import { memberLabel } from '@/lib/schedule-core/types';
 import type { Membership, Phase, Project, Schedule, Team } from '@/lib/schedule-core/types';
 import { barColor } from './bar-color';
 
@@ -103,7 +104,7 @@ export function WorkloadView({
       .map((m) =>
         build(
           m.id,
-          m.display_name ?? '이름 없음',
+          memberLabel(m),
           schedules.filter((s) => assigneeMap.get(s.id)?.includes(m.id)),
         ),
       )

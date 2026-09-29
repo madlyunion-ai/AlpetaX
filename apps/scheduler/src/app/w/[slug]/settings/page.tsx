@@ -24,7 +24,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
   const [{ data: members }, { data: teams }, { data: phases }, { data: projects }] = await Promise.all([
     supabase
       .from('memberships')
-      .select('id, workspace_id, user_id, role, display_name, avatar_url')
+      .select('id, workspace_id, user_id, role, display_name, email, display_as, avatar_url')
       .eq('workspace_id', workspace.id)
       .order('created_at')
       .returns<Membership[]>(),

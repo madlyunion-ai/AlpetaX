@@ -95,7 +95,7 @@ export default async function WorkspacePage({
     await Promise.all([
     supabase
       .from('memberships')
-      .select('id, workspace_id, user_id, role, display_name, avatar_url')
+      .select('id, workspace_id, user_id, role, display_name, email, display_as, avatar_url')
       .eq('workspace_id', workspace.id)
       .order('created_at')
       .returns<Membership[]>(),
@@ -120,7 +120,7 @@ export default async function WorkspacePage({
       .returns<Project[]>(),
     supabase
       .from('memberships')
-      .select('id, workspace_id, user_id, role, display_name, avatar_url')
+      .select('id, workspace_id, user_id, role, display_name, email, display_as, avatar_url')
       .eq('workspace_id', workspace.id)
       .eq('user_id', user.id)
       .maybeSingle<Membership>(),

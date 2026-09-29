@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { createClient } from '@/lib/supabase/client';
 import { rangeFor, stepAnchor } from '@/lib/schedule-core/range';
+import { memberLabel } from '@/lib/schedule-core/types';
 import type {
   Dependency,
   Filters,
@@ -311,7 +312,7 @@ export function Shell(props: ShellProps) {
             </Link>
 
             <form action="/auth/signout" method="post">
-              <button className="btn btn--ghost" title={props.me?.display_name ?? ''}>
+              <button className="btn btn--ghost" title={props.me ? memberLabel(props.me) : ''}>
                 나가기
               </button>
             </form>

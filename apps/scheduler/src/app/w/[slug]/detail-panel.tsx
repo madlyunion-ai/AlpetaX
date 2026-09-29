@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import {
   HORIZON_LABEL,
   STATUS_LABEL,
+  memberLabel,
   type Dependency,
   type Horizon,
   type Membership,
@@ -417,7 +418,7 @@ export function DetailPanel(props: Props) {
                     )
                   }
                 >
-                  {m.display_name ?? '이름 없음'}
+                  {memberLabel(m)}
                 </button>
               );
             })}

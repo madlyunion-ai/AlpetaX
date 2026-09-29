@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useQuietScroll } from '@/lib/hooks/use-quiet-scroll'
 import { createProject } from '../../actions'
 import { TeamSyncLogo } from './logo'
+import { memberLabel } from '@/lib/schedule-core/types'
 import type { Filters, Membership, Phase, Project, Team } from '@/lib/schedule-core/types'
 
 interface Props {
@@ -197,7 +198,7 @@ export function Sidebar({
         <FilterGroup
           label="담당자"
           paramKey="assignees"
-          items={members.map((m) => ({ id: m.id, name: m.display_name ?? '이름 없음' }))}
+          items={members.map((m) => ({ id: m.id, name: memberLabel(m) }))}
           selected={filters.assigneeIds}
           onChange={onChange}
           emptyText="멤버가 없습니다."

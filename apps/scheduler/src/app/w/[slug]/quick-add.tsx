@@ -6,6 +6,7 @@ import { inferHorizon } from '@/lib/schedule-core/horizon';
 import {
   HORIZON_LABEL,
   STATUS_LABEL,
+  memberLabel,
   type Horizon,
   type Membership,
   type Phase,
@@ -14,7 +15,7 @@ import {
   type Schedule,
   type Team,
 } from '@/lib/schedule-core/types';
-import { createSchedule } from '../../actions';
+import { createProject, createSchedule } from '../../actions';
 
 interface Props {
   workspaceId: string;
@@ -50,6 +51,8 @@ export function QuickAdd({
   const initialStart = seed?.start ?? now;
   const initialEnd = seed?.end ?? new Date(now.getTime() + 6 * 86_400_000);
 
+  // 'new' 는 실제 id 가 아니라 '지금 만들겠다'는 표시다.
+  const [newProject, setNewProject] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [allDay, setAllDay] = useState(seed?.allDay ?? true);
@@ -91,10 +94,23 @@ export function QuickAdd({
   function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (projectId === 'new' && !newProject.trim()) return setError('프로젝트 이름을 입력해 주세요.');
     if (!title.trim()) return setError('제목을 입력해 주세요.');
     if (!valid) return setError('종료가 시작보다 빠릅니다.');
 
     startTx(async () => {
+      /*
+       * 새 프로젝트를 먼저 만든다. 일정을 만든 뒤에 프로젝트를 만들면, 중간에
+       * 실패했을 때 프로젝트 없는 일정이 남는다. 순서를 뒤집으면 최악의 경우
+       * 빈 프로젝트 하나가 남을 뿐이고, 그건 설정에서 지울 수 있다.
+       */
+      let pid = projectId;
+      if (pid === 'new') {
+        const made = await createProject(workspaceId, newProject.trim());
+        if (!made.ok || !made.data) return setError(made.error ?? '프로젝트를 만들지 못했습니다.');
+        pid = made.data.id;
+      }
+
       const res = await createSchedule({
         workspaceId,
         title,
@@ -102,7 +118,7 @@ export function QuickAdd({
         startAt: startAt.toISOString(),
         endAt: endAt.toISOString(),
         allDay,
-        projectId: projectId || null,
+        projectId: pid || null,
         teamId: teamId || null,
         phaseId: phaseId || null,
         parentId: parentId || null,
@@ -127,6 +143,43 @@ export function QuickAdd({
         </div>
 
         <div className="qf__body">
+          {/* 프로젝트를 맨 위에 둔다 — 어느 프로젝트의 일인지 정하고 나서
+              제목을 쓰는 것이 순서에 맞고, 프로젝트가 하나도 없을 때
+              여기서 바로 만들 수 있다 */}
+          <div className="field">
+            <label htmlFor="q-project">프로젝트</label>
+            <select
+              id="q-project"
+              className="select"
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+            >
+              <option value="">지정 안 함</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+              <option value="new">+ 새 프로젝트 만들기…</option>
+            </select>
+          </div>
+
+          {projectId === 'new' && (
+            <div className="field">
+              <label htmlFor="q-newproject">새 프로젝트 이름</label>
+              <input
+                id="q-newproject"
+                className="input"
+                autoFocus
+                required
+                maxLength={60}
+                placeholder="예) 스마트 예약 시스템"
+                value={newProject}
+                onChange={(e) => setNewProject(e.target.value)}
+              />
+            </div>
+          )}
+
           <div className="field">
             <label htmlFor="q-title">제목</label>
             <input
@@ -210,22 +263,6 @@ export function QuickAdd({
 
           <div className="detail__row">
             <div className="field">
-              <label htmlFor="q-project">프로젝트</label>
-              <select
-                id="q-project"
-                className="select"
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-              >
-                <option value="">지정 안 함</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="field">
               <label htmlFor="q-phase">업무구분</label>
               <select
                 id="q-phase"
@@ -300,7 +337,7 @@ export function QuickAdd({
                       )
                     }
                   >
-                    {m.display_name ?? '이름 없음'}
+                    {memberLabel(m)}
                   </button>
                 );
               })}

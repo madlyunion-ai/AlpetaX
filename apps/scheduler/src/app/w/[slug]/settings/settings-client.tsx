@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import {
   ROLE_LABEL,
+  memberLabel,
+  type DisplayMode,
   type MemberRole,
   type Membership,
   type Phase,
@@ -26,6 +28,7 @@ import {
   rejectRequest,
   removeMember,
   revokeInvitation,
+  updateMyProfile,
   setTeamMembers,
   updateMemberRole,
   updatePhase,
@@ -87,9 +90,10 @@ const PALETTE = [
   '#7B8698',
 ];
 
-type Tab = 'phases' | 'teams' | 'projects' | 'members' | 'requests';
+type Tab = 'profile' | 'phases' | 'teams' | 'projects' | 'members' | 'requests';
 
 const TAB_LABEL: Record<Tab, string> = {
+  profile: '내 정보',
   phases: '업무구분',
   teams: '팀',
   projects: '프로젝트',
@@ -99,7 +103,7 @@ const TAB_LABEL: Record<Tab, string> = {
 
 export function SettingsClient(props: Props) {
   const { workspace, canManage } = props;
-  const [tab, setTab] = useState<Tab>('phases');
+  const [tab, setTab] = useState<Tab>('profile');
   const pendingCount = props.requests.filter((r) => r.status === 'pending').length;
   const [toast, setToast] = useState<string | null>(null);
   const [, startTx] = useTransition();
@@ -144,6 +148,7 @@ export function SettingsClient(props: Props) {
         </nav>
 
         <main className="set__main quiet-scroll" ref={mainRef}>
+          {tab === 'profile' && <ProfileSection {...props} run={run} />}
           {tab === 'phases' && <PhaseSection {...props} run={run} />}
           {tab === 'teams' && <TeamSection {...props} run={run} />}
           {tab === 'projects' && <ProjectSection {...props} run={run} />}
@@ -755,6 +760,105 @@ function RequestSection({
           </ul>
         </>
       )}
+    </section>
+  );
+}
+
+/* ── 내 정보 ────────────────────────────────────────────────────────
+   이메일은 로그인 계정 그 자체라 여기서 바꿀 수 없다. 바꿀 수 있게 하면
+   로그인하는 주소와 표시되는 주소가 갈라져, 누가 누구인지 어긋난다. */
+function ProfileSection({
+  workspace,
+  me,
+  run,
+}: Props & { run: (fn: () => Promise<{ ok: boolean; error?: string }>, okMsg?: string) => void }) {
+  const [name, setName] = useState(me?.display_name ?? '');
+  const [mode, setMode] = useState<DisplayMode>(me?.display_as ?? 'name');
+
+  if (!me) {
+    return (
+      <section>
+        <h2 className="set__h2">내 정보</h2>
+        <p className="set__empty">이 워크스페이스의 멤버가 아닙니다.</p>
+      </section>
+    );
+  }
+
+  const dirty = name.trim() !== (me.display_name ?? '') || mode !== me.display_as;
+  // 지금 값이 아니라 고친 값으로 미리 보여 준다 — 저장 전에 결과를 알 수 있다
+  const preview = memberLabel({ display_name: name.trim(), email: me.email, display_as: mode });
+
+  return (
+    <section>
+      <h2 className="set__h2">내 정보</h2>
+      <p className="set__lead">
+        여기서 정한 이름이 담당자 목록·일정 상세·업무현황에 그대로 쓰입니다.
+      </p>
+
+      <div className="prof">
+        <div className="field">
+          <label htmlFor="pf-name">이름</label>
+          <input
+            id="pf-name"
+            className="input"
+            value={name}
+            maxLength={60}
+            placeholder="홍길동"
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="pf-mail">이메일</label>
+          <input id="pf-mail" className="input" value={me.email ?? ''} readOnly disabled />
+          <p className="set__note">
+            로그인하는 계정이라 바꿀 수 없습니다. 바꾸시려면 새 주소로 승인을 받아야 합니다.
+          </p>
+        </div>
+
+        <fieldset className="prof__mode">
+          <legend>다른 사람에게 보일 방식</legend>
+          {(['name', 'email'] as DisplayMode[]).map((v) => (
+            <label className="prof__opt" key={v} data-on={mode === v}>
+              <input
+                type="radio"
+                name="display-as"
+                value={v}
+                checked={mode === v}
+                onChange={() => setMode(v)}
+              />
+              <span>
+                <b>{v === 'name' ? '이름으로' : '이메일로'}</b>
+                <em>{v === 'name' ? (name.trim() || '(이름을 적어 주세요)') : (me.email ?? '')}</em>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+
+        <p className="prof__preview">
+          목록에 이렇게 보입니다 — <b>{preview}</b>
+        </p>
+
+        <div className="set__actions">
+          <button
+            className="btn btn--primary"
+            disabled={!dirty || !name.trim()}
+            onClick={() => run(() => updateMyProfile(workspace.id, name.trim(), mode), '저장했습니다.')}
+          >
+            저장
+          </button>
+          <button
+            className="btn"
+            disabled={!dirty}
+            onClick={() => {
+              setName(me.display_name ?? '');
+              setMode(me.display_as);
+            }}
+          >
+            되돌리기
+          </button>
+        </div>
+      </div>
     </section>
   );
 }
