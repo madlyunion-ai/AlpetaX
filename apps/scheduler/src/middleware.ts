@@ -32,7 +32,9 @@ export async function middleware(request: NextRequest) {
     pathname === '/' ||
     pathname.startsWith('/login') ||
     pathname.startsWith('/auth') ||
-    pathname.startsWith('/invite');
+    pathname.startsWith('/invite') ||
+    // 승인 요청은 로그인 전에 받는다 — 여기서 막으면 신청할 길이 없어진다
+    pathname.startsWith('/request');
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
