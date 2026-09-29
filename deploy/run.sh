@@ -26,6 +26,16 @@ need NEXT_PUBLIC_SUPABASE_ANON_KEY
 need SUPABASE_DB_URL
 need VERCEL_TOKEN
 
+# secret 키를 넣으면 RLS 를 우회하는 키가 브라우저 번들에 박힌다.
+# 배포되고 나면 키를 폐기하기 전까지 되돌릴 방법이 없으므로 여기서 멈춘다.
+case "$NEXT_PUBLIC_SUPABASE_ANON_KEY" in
+  sb_secret_*|*service_role*)
+    echo "중단: NEXT_PUBLIC_SUPABASE_ANON_KEY 에 secret 키가 들어 있습니다."
+    echo "      이 값은 브라우저로 나가고, secret 키는 RLS 를 우회합니다."
+    echo "      대시보드에서 'publishable' 키(sb_publishable_...)로 바꾸세요."
+    exit 1 ;;
+esac
+
 SCOPE_ARG=()
 if [ -n "${VERCEL_SCOPE:-}" ]; then SCOPE_ARG=(--scope "$VERCEL_SCOPE"); fi
 
