@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState, useTransition } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import {
   addDays,
@@ -104,6 +104,12 @@ interface Props {
   markLate: boolean;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /**
+   * 가로 끝까지 밀었을 때. -1 은 과거, 1 은 미래로 기간을 한 칸 옮긴다.
+   * 뷰가 직접 URL 을 만지지 않는 이유 — 기간을 정하는 규칙은 셸에 한 곳뿐이고,
+   * 이전/다음 버튼도 같은 길을 쓴다.
+   */
+  onReachEdge?: (dir: -1 | 1) => void;
   /** 마일스톤 마커를 눌렀을 때 — 마일스톤 뷰로 보낸다 */
   onOpenMilestones: () => void;
   canEdit: boolean;
@@ -139,6 +145,7 @@ export function RoadmapView({
   markLate,
   selectedId,
   onSelect,
+  onReachEdge,
   onOpenMilestones,
   canEdit,
   workspaceSlug,
@@ -185,6 +192,15 @@ export function RoadmapView({
 
   const idleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  /*
+   * 끝에 닿아 기간을 옮기는 중인지. 요청을 보내고 새 범위가 올 때까지
+   * 스크롤 이벤트는 계속 들어오므로, 막아 두지 않으면 한 번 밀었을 뿐인데
+   * 몇 달이 한꺼번에 건너뛴다.
+   */
+  const shifting = useRef(false);
+  /** 직전 범위. 새 범위가 오면 그 차이만큼 스크롤을 되밀어 화면을 붙잡는다. */
+  const prevStart = useRef(range.start);
+
   /**
    * 헤더는 가로만, 좌측 트리는 세로만 본문 스크롤을 따라간다.
    * 스크롤바를 드러내는 data-scrolling 도 여기서 함께 세운다 — 같은 이벤트라
@@ -196,12 +212,28 @@ export function RoadmapView({
     if (headRef.current) headRef.current.scrollLeft = el.scrollLeft;
     if (treeRef.current) treeRef.current.scrollTop = el.scrollTop;
 
+    /*
+     * 양 끝에 닿으면 기간을 옮긴다. 여백을 두는 이유: 정확히 0 까지 밀어야
+     * 반응하면 트랙패드 관성으로 멈춘 위치에서는 영영 걸리지 않는다.
+     */
+    const EDGE = 48;
+    if (!shifting.current && onReachEdge) {
+      const max = el.scrollWidth - el.clientWidth;
+      if (el.scrollLeft <= EDGE) {
+        shifting.current = true;
+        onReachEdge(-1);
+      } else if (max > 0 && el.scrollLeft >= max - EDGE) {
+        shifting.current = true;
+        onReachEdge(1);
+      }
+    }
+
     el.dataset.scrolling = 'true';
     clearTimeout(idleTimer.current);
     idleTimer.current = setTimeout(() => {
       el.dataset.scrolling = 'false';
     }, 700);
-  }, []);
+  }, [onReachEdge]);
 
   /* ── 헤더 눈금: 년 / 월 / 주 ────────────────────────────────────── */
   const { years, months, weeks } = useMemo(() => {
@@ -327,6 +359,32 @@ export function RoadmapView({
 
   // 오늘 0시. 이보다 앞서 끝난 일정은 지나간 것으로 흐리게 그린다.
   const todayStart = useMemo(() => startOfDay(new Date()), []);
+
+  /*
+   * 범위가 바뀌면 그만큼 스크롤을 되민다.
+   *
+   * 이게 없으면 끝에 닿아 기간이 옮겨질 때 화면이 통째로 튄다 — 새 범위는
+   * 더 이른 날부터 시작하므로 같은 scrollLeft 가 다른 날짜를 가리킨다.
+   * 앞쪽에 붙은 날 수만큼 밀어 주면 보고 있던 자리가 그대로 남는다.
+   *
+   * 그리기 전에 옮겨야 하므로 useLayoutEffect 를 쓴다. useEffect 면 한 프레임
+   * 동안 튄 화면이 보인다.
+   */
+  useLayoutEffect(() => {
+    const el = bodyRef.current;
+    shifting.current = false;
+    if (!el) return;
+
+    const shiftDays = differenceInCalendarDays(prevStart.current, range.start);
+    prevStart.current = range.start;
+    if (!shiftDays) return;
+
+    const max = el.scrollWidth - el.clientWidth;
+    const next = el.scrollLeft + shiftDays * (pxPerWeek / 7);
+    // 「오늘」처럼 멀리 뛰면 보정이 범위를 벗어난다 — 그때는 끝에 붙인다.
+    el.scrollLeft = Math.max(0, Math.min(max, next));
+    if (headRef.current) headRef.current.scrollLeft = el.scrollLeft;
+  }, [range, pxPerWeek]);
 
   const bandsHeight = bands.reduce((s, b) => s + b.height, 0);
   const totalHeight = MS_LANE_H + bandsHeight;

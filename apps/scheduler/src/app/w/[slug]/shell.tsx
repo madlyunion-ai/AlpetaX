@@ -101,6 +101,12 @@ export function Shell(props: ShellProps) {
 
   const select = useCallback((id: string | null) => setParams({ sel: id }), [setParams]);
 
+  /** 로드맵을 가로 끝까지 밀었을 때 — 이전/다음 버튼과 같은 길을 쓴다 */
+  const stepRange = useCallback(
+    (dir: -1 | 1) => setParams({ anchor: stepAnchor(view, anchor, dir, scale).toISOString() }),
+    [setParams, view, anchor, scale],
+  );
+
   const range = useMemo(() => rangeFor(view, anchor, scale), [view, anchor, scale]);
 
   const rangeLabel = useMemo(() => {
@@ -333,6 +339,7 @@ export function Shell(props: ShellProps) {
               scale={scale}
               /* 로드맵만 전체를 받는다 — 트리의 줄이 기간에 따라 사라지지 않게 */
               schedules={props.allSchedules}
+              onReachEdge={stepRange}
               projects={props.projects}
               phases={props.phases}
               milestones={props.milestones}
