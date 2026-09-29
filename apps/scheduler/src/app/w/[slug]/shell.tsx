@@ -29,6 +29,7 @@ import { MilestoneView } from './views/milestone-view';
 import { WorkloadView } from './views/workload-view';
 import { DetailPanel } from './detail-panel';
 import { QuickAdd } from './quick-add';
+import { WelcomeModal } from './welcome-modal';
 import './shell.css';
 
 const VIEW_LABEL: Record<ViewKind, string> = {
@@ -432,6 +433,18 @@ export function Shell(props: ShellProps) {
           canEdit={canEdit}
           onClose={() => select(null)}
           onToast={say}
+        />
+      )}
+
+      {/* 첫 로그인 환영 창. me 가 없으면(초대 직후 등) 띄우지 않는다 —
+          누구에게 보여 준 것인지 기록할 열쇠가 없다. */}
+      {props.me && (
+        <WelcomeModal
+          userId={props.me.user_id}
+          onAddSchedule={() => {
+            setQuickSeed(null);
+            setQuickOpen(true);
+          }}
         />
       )}
 
