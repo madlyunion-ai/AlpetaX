@@ -43,3 +43,4 @@ deploy/credentials.sh
 deploy/node_modules/
 deploy/.vercel/
 apps/scheduler/.vercel/
+deploy/.provisioned.json

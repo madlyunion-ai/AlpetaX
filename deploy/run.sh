@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 #
-# 배포 한 번에 실행.
-#   ① Supabase 마이그레이션  ② Vercel 프로젝트·환경변수  ③ 프로덕션 배포
+# 배포 전체를 한 번에.
+#   ① Supabase 프로젝트 생성 + 마이그레이션
+#   ② Vercel 프로젝트 생성 + 환경변수
+#   ③ 배포 → 주소 확보 → 로그인 주소 등록 → 재배포
 #
-# 앞 단계가 실패하면 멈춘다 — DB 가 준비되지 않은 채 배포하면 앱은 뜨지만
-# 모든 화면이 빈다. 그 상태는 "배포 성공" 으로 보여서 더 헷갈린다.
+# Git 연동을 쓰지 않는다. 저장소가 아니라 이 디렉터리를 그대로 올리므로
+# 브랜치가 무엇이든, 앱이 하위 폴더에 있든 상관없다.
+#
+# 앞 단계가 실패하면 멈춘다 — DB 없이 배포하면 앱은 뜨지만 모든 화면이 빈다.
+# 그 상태가 "배포 성공" 으로 보여서 더 헷갈린다.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -12,7 +17,7 @@ ROOT="$PWD"
 
 if [ ! -f deploy/credentials.sh ]; then
   echo "deploy/credentials.sh 가 없습니다."
-  echo "deploy/credentials.example.sh 를 복사해 값을 채우세요."
+  echo "deploy/credentials.example.sh 를 복사해 토큰 두 개를 채우세요."
   exit 1
 fi
 # shellcheck disable=SC1091
@@ -21,76 +26,79 @@ source deploy/credentials.sh
 need() {
   if [ -z "${!1:-}" ]; then echo "credentials.sh 에 $1 이 비어 있습니다."; exit 1; fi
 }
-need NEXT_PUBLIC_SUPABASE_URL
-need NEXT_PUBLIC_SUPABASE_ANON_KEY
-need SUPABASE_DB_URL
+need SUPABASE_ACCESS_TOKEN
 need VERCEL_TOKEN
-
-# secret 키를 넣으면 RLS 를 우회하는 키가 브라우저 번들에 박힌다.
-# 배포되고 나면 키를 폐기하기 전까지 되돌릴 방법이 없으므로 여기서 멈춘다.
-case "$NEXT_PUBLIC_SUPABASE_ANON_KEY" in
-  sb_secret_*|*service_role*)
-    echo "중단: NEXT_PUBLIC_SUPABASE_ANON_KEY 에 secret 키가 들어 있습니다."
-    echo "      이 값은 브라우저로 나가고, secret 키는 RLS 를 우회합니다."
-    echo "      대시보드에서 'publishable' 키(sb_publishable_...)로 바꾸세요."
-    exit 1 ;;
-esac
 
 SCOPE_ARG=()
 if [ -n "${VERCEL_SCOPE:-}" ]; then SCOPE_ARG=(--scope "$VERCEL_SCOPE"); fi
 
-echo "── ① Supabase 마이그레이션 ──────────────────────────────"
-node deploy/migrate.mjs
+echo "══ ① Supabase ═══════════════════════════════════════════"
+node deploy/provision.mjs
+
+SUPABASE_URL=$(node -p "require('./deploy/.provisioned.json').NEXT_PUBLIC_SUPABASE_URL")
+SUPABASE_KEY=$(node -p "require('./deploy/.provisioned.json').NEXT_PUBLIC_SUPABASE_ANON_KEY")
+
+# 여기까지 왔는데 키가 secret 이면 브라우저 번들에 RLS 우회 키가 박힌다.
+# 배포되고 나면 키를 폐기하기 전까지 되돌릴 수 없으므로 멈춘다.
+case "$SUPABASE_KEY" in
+  sb_secret_*|*service_role*)
+    echo "중단: publishable 이 아닌 키를 받았습니다."; exit 1 ;;
+esac
 
 echo
-echo "── ② Vercel 프로젝트 연결 ───────────────────────────────"
+echo "══ ② Vercel 연결 ════════════════════════════════════════"
 cd "$ROOT/apps/scheduler"
 
-# --yes: 대화형 질문을 넘긴다. 이 셸은 stdin 이 없어 물어보면 그대로 멈춘다.
-npx --yes vercel@latest link --yes --project alpetax-scheduler \
-  --token "$VERCEL_TOKEN" "${SCOPE_ARG[@]}"
+V() { npx --yes vercel@latest "$@" --token "$VERCEL_TOKEN" "${SCOPE_ARG[@]}"; }
 
-# 환경변수는 넣기 전에 지운다 — vercel env add 는 같은 키가 있으면 실패한다.
+# --yes: 대화형 질문을 넘긴다. 이 셸은 stdin 이 없어 물어보면 그대로 멈춘다.
+V link --yes --project alpetax-scheduler >/dev/null
+echo "  프로젝트 alpetax-scheduler 연결됨"
+
+# 넣기 전에 지운다 — vercel env add 는 같은 키가 있으면 실패한다.
 put_env() {
   local key="$1" val="$2"
   for target in production preview development; do
-    npx --yes vercel@latest env rm "$key" "$target" --yes \
-      --token "$VERCEL_TOKEN" "${SCOPE_ARG[@]}" >/dev/null 2>&1 || true
-    printf '%s' "$val" | npx --yes vercel@latest env add "$key" "$target" \
-      --token "$VERCEL_TOKEN" "${SCOPE_ARG[@]}" >/dev/null
+    V env rm "$key" "$target" --yes >/dev/null 2>&1 || true
+    printf '%s' "$val" | V env add "$key" "$target" >/dev/null
   done
   echo "  $key 등록"
 }
-put_env NEXT_PUBLIC_SUPABASE_URL      "$NEXT_PUBLIC_SUPABASE_URL"
-put_env NEXT_PUBLIC_SUPABASE_ANON_KEY "$NEXT_PUBLIC_SUPABASE_ANON_KEY"
+put_env NEXT_PUBLIC_SUPABASE_URL      "$SUPABASE_URL"
+put_env NEXT_PUBLIC_SUPABASE_ANON_KEY "$SUPABASE_KEY"
 
 echo
-echo "── ③ 첫 배포 (주소를 받기 위해) ─────────────────────────"
-# NEXT_PUBLIC_SITE_URL 은 배포 주소가 정해진 뒤에야 알 수 있다. 그래서 두 번 배포한다:
+echo "══ ③ 배포 ═══════════════════════════════════════════════"
+# NEXT_PUBLIC_SITE_URL 은 배포 주소가 정해진 뒤에야 알 수 있다. 그래서 두 번 올린다:
 # 먼저 올려 주소를 얻고, 그 값을 넣어 다시 올린다. 이 값이 비면 매직링크가
 # 돌아올 곳을 몰라 로그인이 끝나지 않는다.
-URL=$(npx --yes vercel@latest deploy --prod --yes \
-  --token "$VERCEL_TOKEN" "${SCOPE_ARG[@]}" 2>/dev/null | tail -1)
-echo "  배포 주소: $URL"
+echo "  1차 — 주소를 받기 위해"
+URL=$(V deploy --prod --yes 2>/dev/null | tail -1)
+echo "     $URL"
 
-echo
-echo "── ④ 로그인 주소 등록 후 재배포 ─────────────────────────"
+echo "  로그인 주소 등록 후 2차"
 put_env NEXT_PUBLIC_SITE_URL "$URL"
-FINAL=$(npx --yes vercel@latest deploy --prod --yes \
-  --token "$VERCEL_TOKEN" "${SCOPE_ARG[@]}" 2>/dev/null | tail -1)
+FINAL=$(V deploy --prod --yes 2>/dev/null | tail -1)
+
+REF=$(node -p "require('$ROOT/deploy/.provisioned.json').PROJECT_REF")
 
 echo
 echo "════════════════════════════════════════════════════════"
-echo " 배포 완료: $FINAL"
+echo " 배포 완료"
+echo "   앱        $FINAL"
+echo "   Supabase  https://supabase.com/dashboard/project/$REF"
 echo "════════════════════════════════════════════════════════"
 echo
-echo "남은 수동 작업 — Supabase 대시보드에서 두 곳만 채우세요:"
+echo "마지막 한 가지 — 대시보드에서 직접 켜셔야 합니다:"
 echo
-echo " Authentication → URL Configuration"
-echo "   Site URL      : $FINAL"
-echo "   Redirect URLs : $FINAL/auth/callback"
-echo "                   http://localhost:3000/auth/callback"
+echo "  Authentication → URL Configuration"
+echo "    Site URL      : $FINAL"
+echo "    Redirect URLs : $FINAL/auth/callback"
+echo "                    http://localhost:3000/auth/callback"
 echo
-echo " Authentication → Providers → Email : Enable 켜기"
+echo "  Authentication → Providers → Email : Enable"
 echo
-echo "이 둘을 넣지 않으면 매직링크가 차단되어 로그인이 되지 않습니다."
+echo "이 둘이 없으면 매직링크가 차단되어 로그인이 되지 않습니다."
+echo
+echo "배포가 끝났으니 Vercel 토큰은 폐기하세요:"
+echo "  https://vercel.com/account/tokens"
