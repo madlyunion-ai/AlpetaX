@@ -31,6 +31,24 @@ export RESEND_API_KEY=''
 export RESEND_FROM=''
 export RESEND_FROM_NAME='TeamSync'
 
+# ── 4. 구글 로그인 ───────────────────────────────────────────────────
+# 메일을 쓰지 않는 로그인 수단입니다. 결제 없이 무료입니다.
+#
+#  1) https://console.cloud.google.com → 프로젝트 만들기 (이름 아무거나)
+#  2) 좌측 'API 및 서비스' → 'OAuth 동의 화면'
+#       User Type: 외부  /  앱 이름·지원 이메일만 채우고 저장
+#       (테스트 모드로 두면 '테스트 사용자'에 넣은 주소만 로그인됩니다.
+#        팀 전체가 쓰려면 '앱 게시'를 누르세요 — 심사 없이 바로 됩니다.)
+#  3) '사용자 인증 정보' → '사용자 인증 정보 만들기' → 'OAuth 클라이언트 ID'
+#       유형: 웹 애플리케이션
+#       승인된 리디렉션 URI 에 아래 한 줄을 그대로 붙여 넣으세요:
+#
+#         https://iznjnqthavjzkfawtbfc.supabase.co/auth/v1/callback
+#
+#  4) 만들면 나오는 두 값을 아래에 넣으세요.
+export GOOGLE_CLIENT_ID=''
+export GOOGLE_CLIENT_SECRET=''
+
 # ── 선택 ─────────────────────────────────────────────────────────────
 # 이미 만들어 둔 Supabase 프로젝트를 쓰려면 그 이름과 DB 비밀번호를 적으세요.
 # 비우면 alpetax-scheduler 라는 이름으로 서울 리전에 새로 만듭니다.

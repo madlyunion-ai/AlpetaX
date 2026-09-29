@@ -529,3 +529,36 @@ a {
   white-space: nowrap;
   border: 0;
 }
+
+/* 구글 로그인 — 구글의 버튼 규정에 맞춘 흰 바탕·회색 테두리.
+   브랜드 버튼이라 --accent 계열로 물들이지 않는다. */
+.btn--google {
+  width: 100%;
+  gap: 10px;
+  background: #ffffff;
+  color: #1f1f1f;
+  border-color: #dadce0;
+  font-weight: 500;
+}
+.btn--google:hover {
+  background: #f7f8f8;
+}
+/* 두 테마 모두 흰 바탕을 유지한다. 위의 기본 규칙이 색을 직접 박아 두므로
+   따로 어두운 테마 블록을 두지 않는다 — 구글 로고 규정상 바꿀 수 없다. */
+
+/* 두 로그인 수단 사이의 구분선 */
+.login__or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 14px;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+.login__or::before,
+.login__or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
