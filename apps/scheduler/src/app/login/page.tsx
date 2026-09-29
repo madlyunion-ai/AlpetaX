@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { TeamSyncLogo } from '@/app/w/[slug]/logo';
 
 function LoginForm() {
   const params = useSearchParams();
@@ -41,10 +42,8 @@ function LoginForm() {
       }}
     >
       <div className="panel" style={{ width: 'min(400px, 100%)', padding: '2rem' }}>
-        <p className="mono" style={{ margin: 0 }}>
-          TeamSync
-        </p>
-        <h1 style={{ fontSize: 22, margin: '.5rem 0 .25rem', letterSpacing: '-.02em' }}>
+        <TeamSyncLogo style={{ display: 'block', width: 150, height: 'auto', marginBottom: 20 }} />
+        <h1 style={{ fontSize: 22, margin: '0 0 .25rem', letterSpacing: '-.02em' }}>
           팀 일정을 한 화면에서
         </h1>
         <p style={{ color: 'var(--ink-2)', margin: '0 0 1.5rem', fontSize: 13 }}>

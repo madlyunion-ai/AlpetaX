@@ -7,10 +7,17 @@
  *
  * 그라디언트·클립 id 는 문서 전역이라 ts- 를 붙여 다른 SVG 와 부딪히지 않게 했다.
  */
-export function TeamSyncLogo({ className }: { className?: string }) {
+export function TeamSyncLogo({
+  className,
+  style,
+}: {
+  className?: string;
+  style?: React.CSSProperties;
+}) {
   return (
     <svg
       className={className}
+      style={style}
       viewBox="0 0 552 87"
       role="img"
       aria-label="TeamSync"
