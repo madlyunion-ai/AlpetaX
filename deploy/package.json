@@ -1,0 +1,9 @@
+{
+  "name": "alpetax-deploy",
+  "private": true,
+  "type": "module",
+  "description": "배포 실행용. 앱 의존성과 섞지 않기 위해 따로 둔다.",
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
+}

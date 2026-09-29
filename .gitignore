@@ -37,3 +37,9 @@ apps/scheduler/.env*
 
 # Claude Code 로컬 설정 (머신별 경로 · 세션 허용목록)
 .claude/
+
+# 배포 자격증명 — 절대 커밋하지 않는다
+deploy/credentials.sh
+deploy/node_modules/
+deploy/.vercel/
+apps/scheduler/.vercel/
