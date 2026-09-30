@@ -2087,3 +2087,18 @@
     flex: 1;
   }
 }
+
+/* 창 옮기기 — 머리 부분이 손잡이다.
+   잡을 수 있다는 것이 보여야 하므로 커서를 바꾼다. */
+.qf__head[data-drag='true'] {
+  cursor: grab;
+  touch-action: none; /* 끌 때 화면이 함께 스크롤되지 않게 */
+  user-select: none;
+}
+.qf__head[data-drag='true']:active {
+  cursor: grabbing;
+}
+/* 제목만 손잡이로 보이게 — 버튼은 제 커서를 유지한다 */
+.qf__head[data-drag='true'] button {
+  cursor: pointer;
+}

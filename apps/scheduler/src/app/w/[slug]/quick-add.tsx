@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useRef, useEffect, useMemo, useState, useTransition } from 'react';
 import { format } from 'date-fns';
 import { inferHorizon } from '@/lib/schedule-core/horizon';
 import {
@@ -69,6 +69,47 @@ export function QuickAdd({
   const [parentId, setParentId] = useState('');
   const [assignees, setAssignees] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  /*
+   * 창 옮기기.
+   *
+   * 화면을 가린 일정 막대를 확인하며 값을 채워야 할 때가 있다. 창을 닫았다
+   * 다시 열면 적던 내용이 날아가므로, 옮길 수 있는 편이 낫다.
+   *
+   * 위치를 transform 으로만 준다 — left/top 을 건드리면 가운데 정렬이
+   * 풀려서 창 크기가 바뀔 때 자리가 어긋난다.
+   */
+  const [drag, setDrag] = useState({ x: 0, y: 0 });
+  const dragFrom = useRef<{ px: number; py: number; x: number; y: number } | null>(null);
+
+  function onHeadPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    // 닫기 버튼 위에서 시작한 것은 옮기기가 아니다
+    if ((e.target as HTMLElement).closest('button')) return;
+    dragFrom.current = { px: e.clientX, py: e.clientY, x: drag.x, y: drag.y };
+    // 포인터를 붙잡아 둔다 — 창 밖으로 빠르게 끌어도 놓침 없이 따라온다
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function onHeadPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    const from = dragFrom.current;
+    if (!from) return;
+    /*
+     * 화면 밖으로 완전히 내보내지 않는다. 머리 부분이 남아 있어야 다시
+     * 끌어올 수 있고, 아예 사라지면 닫을 방법이 Esc 뿐이다.
+     */
+    const room = 80;
+    const maxX = window.innerWidth / 2 + 200;
+    const maxY = window.innerHeight - room;
+    setDrag({
+      x: Math.max(-maxX, Math.min(maxX, from.x + e.clientX - from.px)),
+      y: Math.max(-room, Math.min(maxY, from.y + e.clientY - from.py)),
+    });
+  }
+
+  function onHeadPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    dragFrom.current = null;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+  }
   const [pending, startTx] = useTransition();
 
   useEffect(() => {
@@ -134,8 +175,19 @@ export function QuickAdd({
 
   return (
     <div className="quick" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <form className="qf" onSubmit={submit}>
-        <div className="qf__head">
+      <form
+        className="qf"
+        onSubmit={submit}
+        style={drag.x || drag.y ? { transform: `translate(${drag.x}px, ${drag.y}px)` } : undefined}
+      >
+        <div
+          className="qf__head"
+          data-drag="true"
+          onPointerDown={onHeadPointerDown}
+          onPointerMove={onHeadPointerMove}
+          onPointerUp={onHeadPointerUp}
+          onPointerCancel={onHeadPointerUp}
+        >
           <h2 className="qf__title">새 일정</h2>
           <button type="button" className="btn btn--ghost" onClick={onClose} aria-label="닫기">
             ✕
