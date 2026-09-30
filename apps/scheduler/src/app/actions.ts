@@ -288,6 +288,7 @@ export async function upsertMilestone(input: {
   projectId: string;
   title: string;
   dueOn: string;
+  description?: string | null;
   status?: 'upcoming' | 'reached' | 'missed';
 }): Promise<ActionResult> {
   const supabase = await createClient();
@@ -298,6 +299,9 @@ export async function upsertMilestone(input: {
     project_id: input.projectId,
     title: input.title.trim(),
     due_on: input.dueOn,
+    // 빈 문자열 대신 null — 설명이 없다는 것과 빈 글을 적었다는 것은 다르고,
+    // 로드맵 호버 카드는 null 일 때만 그 칸을 감춘다
+    description: input.description?.trim() || null,
     status: input.status ?? 'upcoming',
   };
 
