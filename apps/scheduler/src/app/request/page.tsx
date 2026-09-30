@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { TeamSyncLogo } from '@/app/w/[slug]/logo';
 
@@ -15,12 +16,56 @@ import { TeamSyncLogo } from '@/app/w/[slug]/logo';
  * 이메일 소유 확인은 그 첫 로그인이 대신한다 — 남의 주소로 신청할 수는 있어도
  * 매직링크는 그 주소로만 가므로 실제로 들어오지는 못한다.
  */
+interface Ws {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 export default function RequestPage() {
+  return (
+    <Suspense fallback={null}>
+      <RequestForm />
+    </Suspense>
+  );
+}
+
+function RequestForm() {
+  const params = useSearchParams();
+  /*
+   * 주소를 링크로 지정할 수 있다 — /request?ws=union
+   * 팀 이름 목록조차 공개하고 싶지 않을 때, 마스터가 이 링크를 직접 건네면
+   * 고르는 칸 없이 그 워크스페이스로만 신청된다.
+   */
+  const fixed = params.get('ws');
+
+  const [list, setList] = useState<Ws[] | null>(null);
+  const [slug, setSlug] = useState(fixed ?? '');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
   const [error, setError] = useState<string | null>(null);
+
+  /*
+   * 참여할 수 있는 워크스페이스 목록. 이름과 주소만 돌려주는 함수를 쓴다 —
+   * workspaces 표는 로그인 전에 한 줄도 읽히지 않는다.
+   */
+  useEffect(() => {
+    let alive = true;
+    createClient()
+      .rpc('list_open_workspaces')
+      .then(({ data }: { data: Ws[] | null }) => {
+        if (!alive) return;
+        const rows = (data ?? []) as Ws[];
+        setList(rows);
+        // 하나뿐이면 고를 것이 없다
+        setSlug((cur) => cur || (rows.length === 1 ? rows[0].slug : ''));
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,6 +77,7 @@ export default function RequestPage() {
       req_email: email.trim(),
       req_name: name.trim(),
       req_note: note.trim() || null,
+      ws_slug: slug || null,
     });
 
     if (error) {
@@ -53,7 +99,8 @@ export default function RequestPage() {
               요청이 접수되었습니다
             </h1>
             <p style={{ color: 'var(--ink-2)', margin: '0 0 1.5rem', fontSize: 13, lineHeight: 1.7 }}>
-              관리자가 승인하면 <b>{email}</b> 로 로그인하실 수 있습니다.
+              {list?.find((w) => w.slug === slug)?.name ?? '관리자'} 쪽에서 승인하면{' '}
+              <b>{email}</b> 로 로그인하실 수 있습니다.
               <br />
               승인 여부는 따로 알려 드리지 않으니, 잠시 뒤 로그인을 시도해 보세요.
             </p>
@@ -69,6 +116,28 @@ export default function RequestPage() {
             </p>
 
             <form onSubmit={submit} style={{ display: 'grid', gap: 12 }}>
+              {/* 어느 팀으로 갈지 먼저 정한다 — 이름을 적기 전에 */}
+              {!fixed && list && list.length > 1 && (
+                <label style={{ display: 'grid', gap: 5 }}>
+                  <span className="mono">참여할 팀</span>
+                  <select
+                    className="select"
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value)}
+                    required
+                  >
+                    <option value="" disabled>
+                      고르세요
+                    </option>
+                    {list.map((w) => (
+                      <option key={w.id} value={w.slug}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
               <label style={{ display: 'grid', gap: 5 }}>
                 <span className="mono">이름</span>
                 <input

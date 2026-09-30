@@ -31,6 +31,24 @@ export default async function WorkspacePicker() {
     return ws ? [{ ...ws, role: m.role as string }] : [];
   });
 
+  /*
+   * 승인 대기 건수. RLS 가 소유자·관리자에게만 열어 주므로, 권한이 없는
+   * 워크스페이스의 줄은 아예 오지 않는다 — 따로 거를 필요가 없다.
+   *
+   * 여기에 붙이는 이유: 팀마다 워크스페이스를 두면 승인 화면도 팀마다 하나다.
+   * 어디에 대기 중인 요청이 있는지 이 목록에서 보이지 않으면, 마스터가 팀 수
+   * 만큼 설정 화면을 돌아다니며 확인해야 한다.
+   */
+  const { data: pendingRows } = await supabase
+    .from('access_requests')
+    .select('workspace_id')
+    .eq('status', 'pending');
+
+  const pending = new Map<string, number>();
+  for (const r of pendingRows ?? []) {
+    pending.set(r.workspace_id, (pending.get(r.workspace_id) ?? 0) + 1);
+  }
+
   // 워크스페이스가 하나뿐이면 고르는 화면을 보여줄 이유가 없다
   if (list.length === 1) redirect(`/w/${list[0].slug}`);
 
@@ -99,7 +117,12 @@ export default async function WorkspacePicker() {
               }}
             >
               <span style={{ fontWeight: 600 }}>{ws.name}</span>
-              <span className="chip">{ws.role}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {(pending.get(ws.id) ?? 0) > 0 && (
+                  <span className="badge badge--warn">승인 {pending.get(ws.id)}</span>
+                )}
+                <span className="chip">{ws.role}</span>
+              </span>
             </Link>
           ))}
         </div>
