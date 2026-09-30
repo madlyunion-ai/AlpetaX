@@ -102,7 +102,16 @@ export default async function WorkspacePage({
   const wideRange = { start: new Date('1970-01-01T00:00:00Z'), end: new Date('2100-01-01T00:00:00Z') };
   const fetchRange = view === 'roadmap' ? wideRange : range;
 
-  const [{ data: members }, { data: teams }, { data: phases }, { data: projects }, { data: me }] =
+  /*
+   * 한 번에 보낼 수 있는 것은 한 번에 보낸다.
+   *
+   * 서버 컴포넌트에서 await 를 줄줄이 세우면 그 수만큼 DB 왕복이 직렬로
+   * 쌓인다. 여기 있는 다섯 가지는 서로를 기다릴 이유가 없다.
+   *
+   * '나'를 따로 묻지 않는 이유: 멤버 목록에 이미 들어 있다. 같은 표를 두 번
+   * 읽는 대신 받아 온 배열에서 고른다.
+   */
+  const [{ data: members }, { data: teams }, { data: phases }, { data: projects }, { data: milestones }] =
     await Promise.all([
     supabase
       .from('memberships')
@@ -130,12 +139,15 @@ export default async function WorkspacePage({
       .order('created_at')
       .returns<Project[]>(),
     supabase
-      .from('memberships')
-      .select('id, workspace_id, user_id, role, display_name, email, display_as, avatar_url')
+      .from('milestones')
+      .select('id, workspace_id, project_id, title, description, due_on, status')
       .eq('workspace_id', workspace.id)
-      .eq('user_id', user.id)
-      .maybeSingle<Membership>(),
+      .order('due_on')
+      .returns<Milestone[]>(),
     ]);
+
+  // 목록에 이미 있는 것을 다시 묻지 않는다
+  const me = (members ?? []).find((m) => m.user_id === user.id) ?? null;
 
   // 다섯 뷰가 전부 이 함수 하나를 부른다
   const { data: schedulesRaw, error: schedErr } = await supabase.rpc('schedules_in_range', {
@@ -171,30 +183,29 @@ export default async function WorkspacePage({
   const markLate = one('late') !== 'off';
   const lateCount = schedules.filter((s) => isLate(s, new Date())).length;
 
-  const { data: milestones } = await supabase
-    .from('milestones')
-    .select('id, workspace_id, project_id, title, description, due_on, status')
-    .eq('workspace_id', workspace.id)
-    .order('due_on')
-    .returns<Milestone[]>();
-
-  const ids = schedules.map((s) => s.id);
-  const { data: assignees } = ids.length
-    ? await supabase.from('schedule_assignees').select('schedule_id, membership_id').in('schedule_id', ids)
-    : { data: [] as { schedule_id: string; membership_id: string }[] };
-
-  const { data: deps } = ids.length
-    ? await supabase
-        .from('schedule_dependencies')
-        .select('predecessor_id, successor_id, type')
-        .in('predecessor_id', ids)
-        .returns<Dependency[]>()
-    : { data: [] as Dependency[] };
+  /*
+   * 담당자와 의존성은 일정 id 가 나와야 물을 수 있지만, 서로는 기다릴 필요가
+   * 없다. 줄줄이 await 하면 왕복이 두 번 쌓인다.
+   */
+  const ids = allSchedules.map((s) => s.id);
+  const [{ data: assignees }, { data: deps }] = ids.length
+    ? await Promise.all([
+        supabase.from('schedule_assignees').select('schedule_id, membership_id').in('schedule_id', ids),
+        supabase
+          .from('schedule_dependencies')
+          .select('predecessor_id, successor_id, type')
+          .in('predecessor_id', ids)
+          .returns<Dependency[]>(),
+      ])
+    : [
+        { data: [] as { schedule_id: string; membership_id: string }[] },
+        { data: [] as Dependency[] },
+      ];
 
   return (
     <Shell
       workspace={workspace}
-      me={me ?? null}
+      me={me}
       members={members ?? []}
       teams={teams ?? []}
       phases={phases ?? []}
