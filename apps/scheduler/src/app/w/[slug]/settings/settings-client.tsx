@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useQuietScroll } from '@/lib/hooks/use-quiet-scroll';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import {
   ROLE_LABEL,
@@ -24,6 +25,7 @@ import {
   deletePhase,
   deleteRequest,
   deleteTeam,
+  deleteWorkspace,
   movePhase,
   rejectRequest,
   removeMember,
@@ -34,6 +36,7 @@ import {
   updatePhase,
   updateProject,
   updateTeam,
+  updateWorkspace,
 } from '../../../settings-actions';
 import './settings.css';
 
@@ -90,10 +93,11 @@ const PALETTE = [
   '#7B8698',
 ];
 
-type Tab = 'profile' | 'phases' | 'teams' | 'projects' | 'members' | 'requests';
+type Tab = 'profile' | 'workspace' | 'phases' | 'teams' | 'projects' | 'members' | 'requests';
 
 const TAB_LABEL: Record<Tab, string> = {
   profile: '내 정보',
+  workspace: '워크스페이스',
   phases: '업무구분',
   teams: '팀',
   projects: '프로젝트',
@@ -149,6 +153,7 @@ export function SettingsClient(props: Props) {
 
         <main className="set__main quiet-scroll" ref={mainRef}>
           {tab === 'profile' && <ProfileSection {...props} run={run} />}
+          {tab === 'workspace' && <WorkspaceSection {...props} run={run} say={say} />}
           {tab === 'phases' && <PhaseSection {...props} run={run} />}
           {tab === 'teams' && <TeamSection {...props} run={run} />}
           {tab === 'projects' && <ProjectSection {...props} run={run} />}
@@ -859,6 +864,184 @@ function ProfileSection({
           </button>
         </div>
       </div>
+    </section>
+  );
+}
+
+/* ── 워크스페이스 ───────────────────────────────────────────────────
+   이름과 주소를 고치고, 필요하면 통째로 지운다. */
+function WorkspaceSection({
+  workspace,
+  me,
+  members,
+  projects,
+  canManage,
+  run,
+  say,
+}: Props & {
+  run: (fn: () => Promise<{ ok: boolean; error?: string }>, okMsg?: string) => void;
+  say: (msg: string) => void;
+}) {
+  const router = useRouter();
+  const [name, setName] = useState(workspace.name);
+  const [slug, setSlug] = useState(workspace.slug);
+  const [confirm, setConfirm] = useState('');
+  const [armed, setArmed] = useState(false);
+
+  const isOwner = me?.role === 'owner';
+  const dirty = name.trim() !== workspace.name || slug.trim() !== workspace.slug;
+  const slugChanged = slug.trim() !== workspace.slug;
+
+  return (
+    <section>
+      <h2 className="set__h2">워크스페이스</h2>
+      <p className="set__lead">이름과 주소를 고칩니다. 주소는 이 워크스페이스의 URL 입니다.</p>
+
+      <div className="prof">
+        <div className="field">
+          <label htmlFor="ws-name">이름</label>
+          <input
+            id="ws-name"
+            className="input"
+            value={name}
+            maxLength={60}
+            disabled={!canManage}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="ws-slug">주소</label>
+          <input
+            id="ws-slug"
+            className="input"
+            value={slug}
+            maxLength={40}
+            disabled={!canManage}
+            onChange={(e) => setSlug(e.target.value)}
+          />
+          <p className="set__note">
+            /w/<b>{slug || '…'}</b> — 영문 소문자·숫자·하이픈 3~40자.
+            {slugChanged && (
+              <>
+                {' '}
+                <b style={{ color: 'var(--warn)' }}>
+                  바꾸면 지금까지 공유한 링크가 더 이상 열리지 않습니다.
+                </b>
+              </>
+            )}
+          </p>
+        </div>
+
+        {canManage && (
+          <div className="set__actions">
+            <button
+              className="btn btn--primary"
+              disabled={!dirty || !name.trim()}
+              onClick={() =>
+                run(async () => {
+                  const res = await updateWorkspace(workspace.id, name, slug);
+                  // 주소가 바뀌면 지금 보고 있는 URL 이 더는 맞지 않는다
+                  if (res.ok && res.data && res.data.slug !== workspace.slug) {
+                    router.replace(`/w/${res.data.slug}/settings`);
+                  }
+                  return res;
+                }, '저장했습니다.')
+              }
+            >
+              저장
+            </button>
+            <button
+              className="btn"
+              disabled={!dirty}
+              onClick={() => {
+                setName(workspace.name);
+                setSlug(workspace.slug);
+              }}
+            >
+              되돌리기
+            </button>
+          </div>
+        )}
+      </div>
+
+      <h3 className="set__h3" style={{ marginTop: 28 }}>
+        규모
+      </h3>
+      <p className="set__lead">
+        멤버 <b>{members.length}</b>명 · 프로젝트 <b>{projects.length}</b>개
+        {canManage && (
+          <>
+            {' — '}
+            멤버를 더하거나 역할을 바꾸려면 <b>멤버</b> 탭으로 가세요.
+          </>
+        )}
+      </p>
+
+      {isOwner && (
+        <>
+          <h3 className="set__h3" style={{ marginTop: 28, color: 'var(--warn)' }}>
+            워크스페이스 삭제
+          </h3>
+          <p className="set__lead">
+            일정 · 프로젝트 · 업무구분 · 팀 · 마일스톤 · 멤버가 <b>모두 함께 지워집니다.</b>{' '}
+            되돌릴 수 없습니다.
+          </p>
+
+          {!armed ? (
+            <div className="set__actions">
+              <button className="btn btn--danger" onClick={() => setArmed(true)}>
+                삭제하기
+              </button>
+            </div>
+          ) : (
+            <div className="prof" style={{ marginTop: 4 }}>
+              <div className="field">
+                <label htmlFor="ws-confirm">
+                  확인을 위해 <b>{workspace.name}</b> 을(를) 그대로 입력하세요
+                </label>
+                <input
+                  id="ws-confirm"
+                  className="input"
+                  autoFocus
+                  value={confirm}
+                  placeholder={workspace.name}
+                  onChange={(e) => setConfirm(e.target.value)}
+                />
+              </div>
+              <div className="set__actions">
+                <button
+                  className="btn btn--danger"
+                  disabled={confirm.trim() !== workspace.name}
+                  onClick={() =>
+                    run(async () => {
+                      const res = await deleteWorkspace(workspace.id, confirm);
+                      if (res.ok) {
+                        say('워크스페이스를 삭제했습니다.');
+                        router.replace('/w');
+                      }
+                      return res;
+                    })
+                  }
+                >
+                  영구 삭제
+                </button>
+                <button
+                  className="btn"
+                  onClick={() => {
+                    setArmed(false);
+                    setConfirm('');
+                  }}
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {!canManage && <p className="set__empty">관리자만 수정할 수 있습니다.</p>}
     </section>
   );
 }

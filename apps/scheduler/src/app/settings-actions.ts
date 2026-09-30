@@ -423,3 +423,69 @@ export async function updateMyProfile(
   touch();
   return ok();
 }
+
+/* ── 워크스페이스 ───────────────────────────────────────────────────
+   이름·주소 수정은 소유자와 관리자, 삭제는 소유자만. RLS 도 같은 규칙이라
+   여기를 통과해도 DB 가 한 번 더 막는다. */
+
+export async function updateWorkspace(
+  workspaceId: string,
+  name: string,
+  slug: string,
+): Promise<ActionResult<{ slug: string }>> {
+  const denied = await requireAdmin(workspaceId);
+  if (denied) return fail(denied);
+
+  const nm = name.trim();
+  const sl = slug.trim().toLowerCase();
+  if (!nm) return fail('이름을 입력해 주세요.');
+  // create_workspace 와 같은 규칙. 주소는 URL 에 들어가므로 여기서 걸러야
+  // 배포 후 링크가 깨지지 않는다.
+  if (!/^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(sl)) {
+    return fail('주소는 영문 소문자·숫자·하이픈 3~40자여야 합니다.');
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('workspaces')
+    .update({ name: nm, slug: sl })
+    .eq('id', workspaceId);
+
+  if (error) {
+    // 주소는 유일해야 한다. 제약 위반을 그대로 보여 주면 무슨 말인지 모른다.
+    if (error.code === '23505') return fail('이미 쓰이고 있는 주소입니다.');
+    return fail(error.message);
+  }
+  touch();
+  return ok({ slug: sl });
+}
+
+/**
+ * 워크스페이스를 지운다.
+ *
+ * 일정·프로젝트·마일스톤·멤버십이 함께 사라진다(외래키 CASCADE). 되돌릴 수
+ * 없으므로 이름을 정확히 받아 확인한다 — 누르기만 하면 되는 삭제는 실수로
+ * 눌린다.
+ */
+export async function deleteWorkspace(
+  workspaceId: string,
+  confirmName: string,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const role = await myRole(workspaceId);
+  if (role !== 'owner') return fail('워크스페이스 삭제는 소유자만 할 수 있습니다.');
+
+  const { data: ws } = await supabase
+    .from('workspaces')
+    .select('name')
+    .eq('id', workspaceId)
+    .maybeSingle<{ name: string }>();
+  if (!ws) return fail('워크스페이스를 찾을 수 없습니다.');
+  if (confirmName.trim() !== ws.name) return fail('이름이 일치하지 않습니다.');
+
+  const { error } = await supabase.from('workspaces').delete().eq('id', workspaceId);
+  if (error) return fail(error.message);
+  touch();
+  return ok();
+}
