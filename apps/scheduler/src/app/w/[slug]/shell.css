@@ -2145,3 +2145,83 @@
     max-width: none !important;
   }
 }
+
+/* ── 로드맵 양 끝 기간 이동 손잡이 ───────────────────────────────
+   일정표의 좌우 끝에 붙는 세로 막대. 평소에는 흐릿하게 두어 막대를
+   가리지 않고, 마우스를 올리면 또렷해진다. */
+.rm__edge {
+  position: absolute;
+  top: var(--rm-head-h);
+  bottom: 0;
+  width: 22px;
+  z-index: 9;
+  display: grid;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--ink-2);
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  transition:
+    background-color 0.14s ease,
+    color 0.14s ease;
+}
+.rm__edge--prev {
+  /* 트리 폭만큼 비켜선다 — 일정표가 시작하는 자리부터가 이 버튼의 영역이다 */
+  left: var(--tree-w, 200px);
+  border-right: 1px solid var(--line-soft);
+}
+.rm__edge--next {
+  right: 0;
+  border-left: 1px solid var(--line-soft);
+}
+.rm__edge:hover {
+  background: var(--sunken);
+  color: var(--ink);
+}
+.rm__edge:active {
+  background: var(--line-soft);
+}
+
+/* ── 기간 확대·축소 ───────────────────────────────────────────────
+   '보통' 같은 이름을 고르는 대신 한 단계씩 밀고 당긴다. */
+.zoom {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+.zoom__btn {
+  width: 30px;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+.zoom__btn:hover:not([disabled]) {
+  background: var(--sunken);
+}
+.zoom__btn[disabled] {
+  color: var(--ink-3);
+  cursor: not-allowed;
+}
+/* 지금 단계. 글자 폭이 들쑥날쑥하면 버튼이 움직이므로 폭을 고정한다 */
+.zoom__now {
+  min-width: 42px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-2);
+  border-left: 1px solid var(--line-soft);
+  border-right: 1px solid var(--line-soft);
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+}

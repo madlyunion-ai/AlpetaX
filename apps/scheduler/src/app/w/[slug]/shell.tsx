@@ -34,6 +34,19 @@ import { QuickAdd } from './quick-add';
 import { WelcomeModal } from './welcome-modal';
 import './shell.css';
 
+/*
+ * 축척은 네 단계다. 왼쪽이 크게 보는 쪽 — 같은 화면에 더 짧은 기간이 들어간다.
+ * '+' 는 확대(왼쪽으로), '-' 는 축소(오른쪽으로). 지도 확대·축소와 같은 방향이라
+ * 따로 배우지 않아도 된다.
+ */
+const SCALE_STEPS: TimeScale[] = ['day', 'week', 'month', 'quarter'];
+const SCALE_LABEL: Record<TimeScale, { roadmap: string; other: string }> = {
+  day: { roadmap: '크게', other: '일' },
+  week: { roadmap: '보통', other: '주' },
+  month: { roadmap: '작게', other: '월' },
+  quarter: { roadmap: '전체', other: '분기' },
+};
+
 const VIEW_LABEL: Record<ViewKind, string> = {
   roadmap: '로드맵',
   month: '월',
@@ -128,6 +141,7 @@ export function Shell(props: ShellProps) {
   });
 
   const { view, scale, filters } = ui;
+  const scaleIndex = SCALE_STEPS.indexOf(scale);
   const anchor = useMemo(() => new Date(ui.anchorIso), [ui.anchorIso]);
 
   const [quickOpen, setQuickOpen] = useState(false);
@@ -383,18 +397,28 @@ export function Shell(props: ShellProps) {
             </button>
 
             {(view === 'timeline' || view === 'roadmap' || view === 'workload') && (
-              <select
-                className="select"
-                style={{ width: 'auto' }}
-                value={scale}
-                onChange={(e) => setParams({ scale: e.target.value })}
-                aria-label="시간축 단위"
-              >
-                <option value="day">{view === 'roadmap' ? '크게' : '일'}</option>
-                <option value="week">{view === 'roadmap' ? '보통' : '주'}</option>
-                <option value="month">{view === 'roadmap' ? '작게' : '월'}</option>
-                <option value="quarter">{view === 'roadmap' ? '전체' : '분기'}</option>
-              </select>
+              <div className="zoom" role="group" aria-label="기간 확대·축소">
+                <button
+                  className="zoom__btn"
+                  aria-label="기간 늘리기 — 더 넓게 봅니다"
+                  disabled={scaleIndex >= SCALE_STEPS.length - 1}
+                  onClick={() => setParams({ scale: SCALE_STEPS[scaleIndex + 1] })}
+                >
+                  −
+                </button>
+                {/* 지금 어느 단계인지 — 버튼만 두면 몇 번 남았는지 알 수 없다 */}
+                <span className="zoom__now">
+                  {view === 'roadmap' ? SCALE_LABEL[scale].roadmap : SCALE_LABEL[scale].other}
+                </span>
+                <button
+                  className="zoom__btn"
+                  aria-label="기간 줄이기 — 더 자세히 봅니다"
+                  disabled={scaleIndex <= 0}
+                  onClick={() => setParams({ scale: SCALE_STEPS[scaleIndex - 1] })}
+                >
+                  +
+                </button>
+              </div>
             )}
 
             {canEdit && (

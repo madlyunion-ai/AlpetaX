@@ -651,6 +651,35 @@ export function RoadmapView({
         </div>
       </div>
 
+      {/*
+        양 끝의 기간 이동 손잡이.
+        일정표 위에 겹쳐 두는 이유 — 기간을 옮기고 싶어지는 순간은 화면 끝에서
+        막대가 잘릴 때이고, 그때 시선도 손도 거기에 있다. 툴바까지 올라갔다
+        내려오지 않아도 된다.
+
+        끌어서 넘기는 동작(onScroll 의 끝 감지)과 같은 함수를 부른다.
+      */}
+      {onReachEdge && (
+        <>
+          <button
+            className="rm__edge rm__edge--prev"
+            aria-label="이전 기간"
+            title="이전 기간"
+            onClick={() => onReachEdge(-1)}
+          >
+            ‹
+          </button>
+          <button
+            className="rm__edge rm__edge--next"
+            aria-label="다음 기간"
+            title="다음 기간"
+            onClick={() => onReachEdge(1)}
+          >
+            ›
+          </button>
+        </>
+      )}
+
       {editingProject && (
         <ProjectPopover
           key={editingProject.id}
