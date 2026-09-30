@@ -1146,12 +1146,12 @@
 }
 
 /* 캔버스 맨 위 고정 줄. 마커가 여기 모여 있어 찾기 쉽고 누르기 쉽다 */
-/* 프로젝트마다 맨 윗줄이 그 프로젝트의 마일스톤이다.
-   일정 줄과 섞이지 않게 바탕을 살짝 누르고 아래에 실선을 둔다. */
-.rm__band[data-kind='milestone'],
-.rm__treeband[data-kind='milestone'] {
-  background: var(--axis-bg);
-  border-bottom: 1px solid var(--axis-line);
+.rm__mslane {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  background: var(--surface);
+  border-bottom: 1px solid var(--frame-line);
 }
 .rm__msempty {
   position: absolute;
@@ -1263,9 +1263,26 @@
 }
 
 /* 좌측 트리의 마일스톤 줄 */
-/* 2열의 '마일스톤' 글자 — 업무구분 칸과 같은 자리에 온다 */
-.rm__treeband[data-kind='milestone'] .rm__phase {
-  background: transparent;
+.rm__treeband--ms {
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  border-bottom: 1px solid var(--frame-line);
+}
+.rm__treeband--ms {
+  align-items: flex-end;
+  padding-bottom: 3px;
+}
+.rm__mslabel {
+  display: flex;
+  /* 글자 밑선이 아니라 가운데로 맞춘다 — 뱃지는 위아래 여백을 가진 상자라
+     밑선을 기준으로 삼으면 글자보다 아래로 처진다. */
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+  font-size: 12px;
+  line-height: 14px;
   font-weight: 650;
   color: var(--hdr-ink);
 }
@@ -2084,4 +2101,47 @@
 /* 제목만 손잡이로 보이게 — 버튼은 제 커서를 유지한다 */
 .qf__head[data-drag='true'] button {
   cursor: pointer;
+}
+
+/* ── 마일스톤 고치기 ─────────────────────────────────────────────
+   목록의 한 줄이 그 자리에서 폼이 된다. 따로 창을 띄우지 않는 이유 —
+   앞뒤 마일스톤의 날짜를 보면서 고쳐야 할 때가 많다. */
+.ms__edit {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.ms__editrow {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+.ms__editrow > .field {
+  flex: 1;
+  min-width: 0;
+}
+.ms__edit .field {
+  display: grid;
+  gap: 4px;
+}
+.ms__edit .field > span {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.ms__editfoot {
+  display: flex;
+  gap: 6px;
+}
+
+@media (max-width: 560px) {
+  .ms__editrow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ms__editrow > .field {
+    max-width: none !important;
+  }
 }
