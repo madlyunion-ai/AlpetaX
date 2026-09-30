@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { createClient } from '@/lib/supabase/client';
 import { rangeFor, stepAnchor } from '@/lib/schedule-core/range';
+import { isLate } from '@/lib/schedule-core/workload';
 import { memberLabel } from '@/lib/schedule-core/types';
 import type {
   Dependency,
@@ -50,9 +51,8 @@ export interface ShellProps {
   teams: Team[];
   phases: Phase[];
   projects: Project[];
+  /** 워크스페이스의 모든 일정. 기간·필터는 브라우저에서 건다. */
   schedules: Schedule[];
-  /** 기간과 무관한 전체 목록. 로드맵 트리가 줄을 만드는 데 쓴다. */
-  allSchedules: Schedule[];
   milestones: Milestone[];
   assignees: { schedule_id: string; membership_id: string }[];
   dependencies: Dependency[];
@@ -63,17 +63,72 @@ export interface ShellProps {
   filters: Filters;
   /** 지연을 빨강으로 강조하는 중인가. 끄면 다른 일과 같은 색으로 보인다. */
   markLate: boolean;
-  /** 강조 여부와 무관한 지연 건수 */
-  lateCount: number;
   loadError: string | null;
 }
 
+/** 화면이 무엇을 보여 줄지 — 서버가 아니라 브라우저가 들고 있는 값 */
+interface ViewState {
+  view: ViewKind;
+  scale: TimeScale;
+  anchorIso: string;
+  sel: string | null;
+  markLate: boolean;
+  filters: Filters;
+}
+
+/** URL 을 화면 상태로 바꾼다. 서버의 page.tsx 와 같은 규칙을 쓴다. */
+function readUrl(sp: URLSearchParams, fallback: ViewState): ViewState {
+  const list = (k: string): string[] | null => {
+    const v = sp.get(k);
+    if (!v) return null;
+    if (v === '-') return [];
+    const out = v.split(',').filter(Boolean);
+    return out.length ? out : null;
+  };
+  const v = sp.get('view');
+  const sc = sp.get('scale');
+  return {
+    view: (v as ViewKind) ?? fallback.view,
+    scale: (sc as TimeScale) ?? fallback.scale,
+    anchorIso: sp.get('anchor') ?? fallback.anchorIso,
+    sel: sp.get('sel'),
+    markLate: sp.get('late') !== 'off',
+    filters: {
+      projectIds: list('projects'),
+      teamIds: list('teams'),
+      phaseIds: list('phases'),
+      assigneeIds: list('assignees'),
+    },
+  };
+}
+
 export function Shell(props: ShellProps) {
-  const { workspace, view, scale, filters } = props;
+  const { workspace } = props;
   const router = useRouter();
   const pathname = usePathname();
-  const params = useSearchParams();
-  const anchor = useMemo(() => new Date(props.anchorIso), [props.anchorIso]);
+
+  /*
+   * 화면 상태를 브라우저가 들고 있는다.
+   *
+   * 전에는 탭·필터·상세 창이 전부 URL 을 거쳐 서버를 다시 돌렸다. 그런데 그
+   * 동작들은 데이터를 바꾸지 않는다 — 이미 받아 둔 것을 어떻게 보여 줄지만
+   * 정한다. 서버를 부르면 왕복 다섯 번이 그대로 얹힌다.
+   *
+   * URL 은 계속 맞춰 둔다. 링크로 넘기면 같은 화면이 열려야 하고, 뒤로 가기도
+   * 동작해야 한다. 다만 history API 로 직접 쓴다 — router.push 는 서버
+   * 컴포넌트를 다시 그리게 한다.
+   */
+  const [ui, setUi] = useState<ViewState>({
+    view: props.view,
+    scale: props.scale,
+    anchorIso: props.anchorIso,
+    sel: props.selectedId,
+    markLate: props.markLate,
+    filters: props.filters,
+  });
+
+  const { view, scale, filters } = ui;
+  const anchor = useMemo(() => new Date(ui.anchorIso), [ui.anchorIso]);
 
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickSeed, setQuickSeed] = useState<{ start: Date; end: Date; allDay: boolean } | null>(null);
@@ -86,18 +141,28 @@ export function Shell(props: ShellProps) {
     toastTimer.current = setTimeout(() => setToast(null), 2600);
   }, []);
 
-  /* ── URL 이 유일한 뷰 상태 저장소 ───────────────────────────────── */
+  /* ── 화면 상태 바꾸기 — 서버를 거치지 않는다 ────────────────────── */
   const setParams = useCallback(
     (patch: Record<string, string | null>) => {
-      const next = new URLSearchParams(params.toString());
+      const next = new URLSearchParams(window.location.search);
       for (const [k, v] of Object.entries(patch)) {
         if (v === null || v === '') next.delete(k);
         else next.set(k, v);
       }
-      router.push(`${pathname}?${next.toString()}`, { scroll: false });
+      const qs = next.toString();
+      window.history.pushState(null, '', qs ? `${pathname}?${qs}` : pathname);
+      setUi((prev) => readUrl(next, prev));
     },
-    [params, pathname, router],
+    [pathname],
   );
+
+  // 뒤로/앞으로 — 주소가 바뀌었으니 화면 상태도 따라간다
+  useEffect(() => {
+    const onPop = () =>
+      setUi((prev) => readUrl(new URLSearchParams(window.location.search), prev));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   const select = useCallback((id: string | null) => setParams({ sel: id }), [setParams]);
 
@@ -108,6 +173,49 @@ export function Shell(props: ShellProps) {
   );
 
   const range = useMemo(() => rangeFor(view, anchor, scale), [view, anchor, scale]);
+
+  const assigneesBySchedule = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const a of props.assignees) {
+      const list = map.get(a.schedule_id) ?? [];
+      list.push(a.membership_id);
+      map.set(a.schedule_id, list);
+    }
+    return map;
+  }, [props.assignees]);
+
+  /*
+   * 필터는 여기서 건다. 전에는 질의에 조건을 실어 보냈는데, 체크박스를 하나
+   * 누를 때마다 서버 왕복이 났다.
+   *
+   * 세 상태를 그대로 옮긴다 — null 이면 전부, 배열이면 그 항목만, 빈 배열이면
+   * 아무것도. 빈 배열을 "전부" 로 다루면 '전체 해제' 가 동작하지 않는다.
+   */
+  const filtered = useMemo(() => {
+    const pass = (sel: string[] | null, v: string | null) =>
+      sel === null || (v !== null && sel.includes(v));
+    return props.schedules.filter((s) => {
+      if (!pass(filters.projectIds, s.project_id)) return false;
+      if (!pass(filters.phaseIds, s.phase_id)) return false;
+      if (!pass(filters.teamIds, s.team_id)) return false;
+      if (filters.assigneeIds !== null) {
+        const mine = assigneesBySchedule.get(s.id) ?? [];
+        if (!mine.some((id) => filters.assigneeIds!.includes(id))) return false;
+      }
+      return true;
+    });
+  }, [props.schedules, filters, assigneesBySchedule]);
+
+  /** 기간 안의 것만 — 로드맵 트리는 이것 말고 전체를 쓴다 */
+  const inRange = useMemo(
+    () => filtered.filter((s) => new Date(s.end_at) >= range.start && new Date(s.start_at) <= range.end),
+    [filtered, range],
+  );
+
+  const lateCount = useMemo(
+    () => inRange.filter((s) => isLate(s, new Date())).length,
+    [inRange],
+  );
 
   const rangeLabel = useMemo(() => {
     if (view === 'day') return format(anchor, 'yyyy년 M월 d일 (EEE)', { locale: ko });
@@ -165,27 +273,17 @@ export function Shell(props: ShellProps) {
     function onKey(e: KeyboardEvent) {
       if (e.key !== 'Escape') return;
       if (quickOpen) setQuickOpen(false);
-      else if (props.selectedId) select(null);
+      else if (ui.sel) select(null);
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [quickOpen, props.selectedId, select]);
-
-  const assigneesBySchedule = useMemo(() => {
-    const map = new Map<string, string[]>();
-    for (const a of props.assignees) {
-      const list = map.get(a.schedule_id) ?? [];
-      list.push(a.membership_id);
-      map.set(a.schedule_id, list);
-    }
-    return map;
-  }, [props.assignees]);
+  }, [quickOpen, ui.sel, select]);
 
   const teamById = useMemo(() => new Map(props.teams.map((t) => [t.id, t])), [props.teams]);
 
   const selected = useMemo(
-    () => props.schedules.find((s) => s.id === props.selectedId) ?? null,
-    [props.schedules, props.selectedId],
+    () => props.schedules.find((s) => s.id === ui.sel) ?? null,
+    [props.schedules, ui.sel],
   );
 
   /* ── 캔버스 드래그로 일정 만들기 ────────────────────────────────── */
@@ -273,12 +371,12 @@ export function Shell(props: ShellProps) {
               type="button"
               className="switch"
               role="switch"
-              aria-checked={props.markLate}
-              title={props.markLate ? '지연 강조 끄기' : '지연 강조 켜기'}
-              onClick={() => setParams({ late: props.markLate ? 'off' : null })}
+              aria-checked={ui.markLate}
+              title={ui.markLate ? '지연 강조 끄기' : '지연 강조 켜기'}
+              onClick={() => setParams({ late: ui.markLate ? 'off' : null })}
             >
               <span className="switch__text">지연</span>
-              {props.lateCount > 0 && <em className="switch__count">{props.lateCount}</em>}
+              {lateCount > 0 && <em className="switch__count">{lateCount}</em>}
               <span className="switch__track" aria-hidden="true">
                 <span className="switch__knob" />
               </span>
@@ -338,13 +436,13 @@ export function Shell(props: ShellProps) {
               range={range}
               scale={scale}
               /* 로드맵만 전체를 받는다 — 트리의 줄이 기간에 따라 사라지지 않게 */
-              schedules={props.allSchedules}
+              schedules={filtered}
               onReachEdge={stepRange}
               projects={props.projects}
               phases={props.phases}
               milestones={props.milestones}
-              markLate={props.markLate}
-              selectedId={props.selectedId}
+              markLate={ui.markLate}
+              selectedId={ui.sel}
               onSelect={select}
               onOpenMilestones={() => setParams({ view: 'milestone' })}
               canEdit={canEdit}
@@ -355,10 +453,10 @@ export function Shell(props: ShellProps) {
             <MonthView
               anchor={anchor}
               range={range}
-              schedules={props.schedules}
+              schedules={inRange}
               teamById={teamById}
-              markLate={props.markLate}
-              selectedId={props.selectedId}
+              markLate={ui.markLate}
+              selectedId={ui.sel}
               onSelect={select}
               onCreate={canEdit ? openQuickFor : undefined}
             />
@@ -366,36 +464,36 @@ export function Shell(props: ShellProps) {
             <TimeGridView
               days={view === 'day' ? 1 : 7}
               range={range}
-              schedules={props.schedules}
+              schedules={inRange}
               teamById={teamById}
-              markLate={props.markLate}
-              selectedId={props.selectedId}
+              markLate={ui.markLate}
+              selectedId={ui.sel}
               onSelect={select}
               onCreate={canEdit ? openQuickFor : undefined}
             />
           ) : view === 'workload' ? (
             <WorkloadView
               range={range}
-              schedules={props.schedules}
+              schedules={inRange}
               members={props.members}
               teams={props.teams}
               phases={props.phases}
               projects={props.projects}
               assigneeMap={assigneesBySchedule}
-              markLate={props.markLate}
-              selectedId={props.selectedId}
+              markLate={ui.markLate}
+              selectedId={ui.sel}
               onSelect={select}
             />
           ) : view === 'timeline' ? (
             <TimelineView
               range={range}
               scale={scale}
-              schedules={props.schedules}
+              schedules={inRange}
               milestones={props.milestones}
               teamById={teamById}
               dependencies={props.dependencies}
-              markLate={props.markLate}
-              selectedId={props.selectedId}
+              markLate={ui.markLate}
+              selectedId={ui.sel}
               onSelect={select}
               canEdit={canEdit}
               onToast={say}
@@ -404,7 +502,7 @@ export function Shell(props: ShellProps) {
             <MilestoneView
               projects={props.projects}
               milestones={props.milestones}
-              schedules={props.schedules}
+              schedules={inRange}
               workspaceId={workspace.id}
               canEdit={canEdit}
               onToast={say}
@@ -418,7 +516,7 @@ export function Shell(props: ShellProps) {
           진행 <b>{stats.active}</b>
         </span>
         <span>
-          지연 <b style={{ color: props.lateCount ? 'var(--warn)' : undefined }}>{props.lateCount}</b>
+          지연 <b style={{ color: lateCount ? 'var(--warn)' : undefined }}>{lateCount}</b>
         </span>
         <span>
           이번 주 마감 <b>{stats.dueSoon}</b>

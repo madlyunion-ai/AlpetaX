@@ -1,7 +1,5 @@
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { rangeFor } from '@/lib/schedule-core/range';
-import { isLate } from '@/lib/schedule-core/workload';
 import type {
   Membership,
   Milestone,
@@ -89,18 +87,21 @@ export default async function WorkspacePage({
     assigneeIds: parseList(one('assignees')),
   };
 
-  const range = rangeFor(view, anchor, scale);
 
   /*
-   * 로드맵만 전체를 가져온다.
+   * 일정은 기간·필터로 거르지 않고 한 번에 다 읽는다.
    *
-   * 트리의 줄(프로젝트 × 업무구분)은 "무엇이 등록돼 있나" 를 말하는 것이지
-   * "이 기간에 무엇이 있나" 가 아니다. 기간으로 거른 목록으로 줄을 만들면,
-   * 기간을 옮겼을 때 줄이 사라져 등록해 둔 일이 없어진 것처럼 보인다.
-   * 축과 막대는 그대로 기간을 따른다.
+   * 탭을 바꾸거나 필터를 켜거나 상세 창을 닫는 것은 데이터를 바꾸지 않는다.
+   * 보여 주는 것만 달라진다. 그런데 그 조건을 질의에 넣어 두면 화면을 만질
+   * 때마다 서버를 거쳐야 하고, 왕복 다섯 번이 매번 쌓인다.
+   *
+   * 다 읽어 두면 그 뒤로는 브라우저 안에서 끝난다. 서버는 데이터가 실제로
+   * 바뀔 때만 — 즉 저장·수정·삭제에만 — 다시 일한다.
+   *
+   * 지금 규모(수십 건)에서는 다 읽는 편이 오히려 싸다. 수천 건이 되면
+   * 이 판단을 다시 해야 한다.
    */
-  const wideRange = { start: new Date('1970-01-01T00:00:00Z'), end: new Date('2100-01-01T00:00:00Z') };
-  const fetchRange = view === 'roadmap' ? wideRange : range;
+  const fetchRange = { start: new Date('1970-01-01T00:00:00Z'), end: new Date('2100-01-01T00:00:00Z') };
 
   /*
    * 한 번에 보낼 수 있는 것은 한 번에 보낸다.
@@ -154,34 +155,13 @@ export default async function WorkspacePage({
     ws: workspace.id,
     from_ts: fetchRange.start.toISOString(),
     to_ts: fetchRange.end.toISOString(),
-    project_ids: filters.projectIds,
-    team_ids: filters.teamIds,
-    assignee_ids: filters.assigneeIds,
-    phase_ids: filters.phaseIds,
+    // 거르지 않는다 — 필터는 브라우저에서 건다
+    project_ids: null,
+    team_ids: null,
+    assignee_ids: null,
+    phase_ids: null,
   });
-  // 로드맵에 넘기는 전체 목록. 다른 뷰에서는 이미 기간으로 걸러져 온 것과 같다.
   const allSchedules = (schedulesRaw ?? []) as Schedule[];
-
-  /*
-   * 화면의 나머지(하단 집계, 지연 건수, 다른 뷰)는 지금까지처럼 기간 안의
-   * 것만 센다. 전체를 가져온 것은 로드맵 트리 때문이지, 집계 기준을 바꾸려는
-   * 것이 아니다.
-   */
-  const schedules =
-    view === 'roadmap'
-      ? allSchedules.filter(
-          (s) => new Date(s.end_at) >= range.start && new Date(s.start_at) <= range.end,
-        )
-      : allSchedules;
-
-  /*
-   * 지연 강조 켜기/끄기. 항목을 감추지 않는다 — 끄면 지연된 일도 다른 일과
-   * 같은 색(업무구분·팀 색)으로 보인다. 목록에서 사라지지 않으므로
-   * "몇 건이 빠졌나" 를 따질 필요가 없다.
-   * 다른 뷰 상태와 마찬가지로 URL 이 기억한다.
-   */
-  const markLate = one('late') !== 'off';
-  const lateCount = schedules.filter((s) => isLate(s, new Date())).length;
 
   /*
    * 담당자와 의존성은 일정 id 가 나와야 물을 수 있지만, 서로는 기다릴 필요가
@@ -210,8 +190,7 @@ export default async function WorkspacePage({
       teams={teams ?? []}
       phases={phases ?? []}
       projects={projects ?? []}
-      schedules={schedules}
-      allSchedules={allSchedules}
+      schedules={allSchedules}
       milestones={milestones ?? []}
       assignees={assignees ?? []}
       dependencies={deps ?? []}
@@ -220,8 +199,7 @@ export default async function WorkspacePage({
       anchorIso={anchor.toISOString()}
       selectedId={selectedId}
       filters={filters}
-      markLate={markLate}
-      lateCount={lateCount}
+      markLate={one('late') !== 'off'}
       loadError={schedErr?.message ?? null}
     />
   );
