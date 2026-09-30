@@ -146,6 +146,12 @@ export function Shell(props: ShellProps) {
 
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickSeed, setQuickSeed] = useState<{ start: Date; end: Date; allDay: boolean } | null>(null);
+  /*
+   * 어느 프로젝트로 열 것인가. 로드맵의 '일정추가' 로 열면 그 프로젝트가
+   * 미리 골라져야 한다 — 방금 그 이름을 눌렀는데 다시 고르게 하면 헛수고다.
+   * null 이면 지금까지처럼 필터·첫 프로젝트를 따른다.
+   */
+  const [quickProject, setQuickProject] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -303,6 +309,13 @@ export function Shell(props: ShellProps) {
   /* ── 캔버스 드래그로 일정 만들기 ────────────────────────────────── */
   const openQuickFor = useCallback((start: Date, end: Date, allDay: boolean) => {
     setQuickSeed({ start, end, allDay });
+    setQuickProject(null);
+    setQuickOpen(true);
+  }, []);
+
+  const openQuickForProject = useCallback((projectId: string) => {
+    setQuickSeed(null);
+    setQuickProject(projectId);
     setQuickOpen(true);
   }, []);
 
@@ -462,6 +475,7 @@ export function Shell(props: ShellProps) {
               /* 로드맵만 전체를 받는다 — 트리의 줄이 기간에 따라 사라지지 않게 */
               schedules={filtered}
               onReachEdge={stepRange}
+              onAddSchedule={canEdit ? openQuickForProject : undefined}
               projects={props.projects}
               phases={props.phases}
               milestones={props.milestones}
@@ -589,9 +603,12 @@ export function Shell(props: ShellProps) {
           members={props.members}
           projects={props.projects}
           schedules={props.schedules}
-          defaultProjectId={filters.projectIds?.[0] ?? props.projects[0]?.id ?? null}
+          defaultProjectId={quickProject ?? filters.projectIds?.[0] ?? props.projects[0]?.id ?? null}
           seed={quickSeed}
-          onClose={() => setQuickOpen(false)}
+          onClose={() => {
+            setQuickOpen(false);
+            setQuickProject(null);
+          }}
           onToast={say}
         />
       )}

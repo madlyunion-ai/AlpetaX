@@ -110,6 +110,8 @@ interface Props {
    * 이전/다음 버튼도 같은 길을 쓴다.
    */
   onReachEdge?: (dir: -1 | 1) => void;
+  /** 프로젝트 라벨의 '일정추가' — 그 프로젝트가 미리 골라진 채로 열린다 */
+  onAddSchedule?: (projectId: string) => void;
   /** 마일스톤 마커를 눌렀을 때 — 마일스톤 뷰로 보낸다 */
   onOpenMilestones: () => void;
   canEdit: boolean;
@@ -146,6 +148,7 @@ export function RoadmapView({
   selectedId,
   onSelect,
   onReachEdge,
+  onAddSchedule,
   onOpenMilestones,
   canEdit,
   workspaceSlug,
@@ -483,6 +486,20 @@ export function RoadmapView({
                   <span className="rm__projectname" title={b.projectName}>
                     {b.projectName}
                   </span>
+                  {/*
+                    띠가 한 줄뿐인 프로젝트에서는 버튼이 들어갈 자리가 없다.
+                    억지로 넣으면 이름이 잘리거나 칸을 넘친다 — 그럴 때는
+                    툴바의 '+ 일정' 을 쓰면 된다.
+                  */}
+                  {b.projectId && onAddSchedule && b.projectSpan >= 66 && (
+                    <button
+                      className="rm__addhere"
+                      title={`${b.projectName} 에 일정 추가`}
+                      onClick={() => onAddSchedule(b.projectId!)}
+                    >
+                      + 일정추가
+                    </button>
+                  )}
                   {b.projectId && (
                     <button
                       className="rm__gear"
