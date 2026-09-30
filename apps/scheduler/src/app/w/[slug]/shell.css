@@ -1146,12 +1146,12 @@
 }
 
 /* 캔버스 맨 위 고정 줄. 마커가 여기 모여 있어 찾기 쉽고 누르기 쉽다 */
-.rm__mslane {
-  position: sticky;
-  top: 0;
-  z-index: 8;
-  background: var(--surface);
-  border-bottom: 1px solid var(--frame-line);
+/* 프로젝트마다 맨 윗줄이 그 프로젝트의 마일스톤이다.
+   일정 줄과 섞이지 않게 바탕을 살짝 누르고 아래에 실선을 둔다. */
+.rm__band[data-kind='milestone'],
+.rm__treeband[data-kind='milestone'] {
+  background: var(--axis-bg);
+  border-bottom: 1px solid var(--axis-line);
 }
 .rm__msempty {
   position: absolute;
@@ -1263,26 +1263,9 @@
 }
 
 /* 좌측 트리의 마일스톤 줄 */
-.rm__treeband--ms {
-  background: var(--surface);
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  border-bottom: 1px solid var(--frame-line);
-}
-.rm__treeband--ms {
-  align-items: flex-end;
-  padding-bottom: 3px;
-}
-.rm__mslabel {
-  display: flex;
-  /* 글자 밑선이 아니라 가운데로 맞춘다 — 뱃지는 위아래 여백을 가진 상자라
-     밑선을 기준으로 삼으면 글자보다 아래로 처진다. */
-  align-items: center;
-  gap: 6px;
-  margin-left: 12px;
-  font-size: 12px;
-  line-height: 14px;
+/* 2열의 '마일스톤' 글자 — 업무구분 칸과 같은 자리에 온다 */
+.rm__treeband[data-kind='milestone'] .rm__phase {
+  background: transparent;
   font-weight: 650;
   color: var(--hdr-ink);
 }

@@ -14,7 +14,7 @@ import {
 import { createScale, laneCount, packLanes, type PackedBar } from '@/lib/schedule-core/layout';
 import type { DateRange } from '@/lib/schedule-core/range';
 import { barColor } from './bar-color';
-import { milestoneStat, milestoneTiming } from '@/lib/schedule-core/milestone';
+import { milestoneStat, milestoneTiming, type MilestoneStat } from '@/lib/schedule-core/milestone';
 import { WEEK_STARTS_ON } from '@/lib/schedule-core/holidays';
 import { updateProject } from '../../../settings-actions';
 import type { Milestone, Phase, Project, Schedule, TimeScale } from '@/lib/schedule-core/types';
@@ -84,7 +84,7 @@ function phaseLabelWidth(name: string): number {
   return condensePhase(name) ? PHASE_TARGET : approxTextWidth(name, PHASE_FONT);
 }
 const HEAD_H = 53; // globals.css 의 --rm-head-h 와 같은 값. 팝오버 위치 계산에만 쓴다
-const MS_LANE_H = 26; // 마일스톤 전용 줄
+const MS_LANE_H = 26; // 프로젝트마다 하나씩 놓이는 마일스톤 줄의 높이
 
 interface Props {
   range: DateRange;
@@ -119,6 +119,14 @@ interface Props {
 
 interface Band {
   key: string;
+  /**
+   * 마일스톤 줄인가 일정 줄인가.
+   *
+   * 전에는 마일스톤이 화면 맨 위 한 줄에 전부 모여 있었다. 프로젝트가 늘면
+   * 어느 마일스톤이 어느 프로젝트 것인지 알 수 없다 — 날짜만 보이고 소속은
+   * 안 보인다. 프로젝트마다 자기 줄을 주면 그 줄의 세로 라벨이 곧 답이다.
+   */
+  kind: 'milestone' | 'bars';
   /** 좌측 1열 — 프로젝트 */
   projectId: string | null;
   projectName: string;
@@ -300,6 +308,7 @@ export function RoadmapView({
       const lanes = Math.max(1, laneCount(bars));
       rows.push({
         key,
+        kind: 'bars',
         projectId,
         projectName,
         projectColor,
@@ -313,6 +322,20 @@ export function RoadmapView({
     const forProject = (pid: string | null, name: string, color: string) => {
       const mine = schedules.filter((s) => s.project_id === pid);
       if (!mine.length) return;
+
+      // 프로젝트의 첫 줄은 그 프로젝트의 마일스톤. 일정이 있는 프로젝트에만
+      // 붙인다 — 줄이 하나도 없는 프로젝트를 띄워 봐야 빈칸만 남는다.
+      rows.push({
+        key: `${pid ?? 'none'}:ms`,
+        kind: 'milestone',
+        projectId: pid,
+        projectName: name,
+        projectColor: color,
+        phaseName: '마일스톤',
+        barColor: color,
+        bars: [],
+        height: MS_LANE_H,
+      });
 
       for (const ph of sortedPhases) {
         push(
@@ -386,23 +409,32 @@ export function RoadmapView({
     if (headRef.current) headRef.current.scrollLeft = el.scrollLeft;
   }, [range, pxPerWeek]);
 
-  const bandsHeight = bands.reduce((s, b) => s + b.height, 0);
-  const totalHeight = MS_LANE_H + bandsHeight;
+  const totalHeight = bands.reduce((s, b) => s + b.height, 0);
   const todayX = sc.x(new Date());
   const showToday = todayX >= 0 && todayX <= sc.totalWidth;
 
-  /** 화면 안에 들어오는 마일스톤만, 통계와 프로젝트 이름까지 붙여서 */
-  const visibleMilestones = useMemo(() => {
+  /**
+   * 화면 안에 들어오는 마일스톤을 프로젝트별로 나눠 둔다.
+   * 줄을 그릴 때 그 프로젝트 것만 꺼내 쓴다.
+   */
+  const msByProject = useMemo(() => {
     const projectName = new Map(projects.map((p) => [p.id, p.name]));
-    return milestones
-      .map((m) => ({
+    const map = new Map<string, { m: Milestone; due: Date; stat: MilestoneStat; project: string }[]>();
+    for (const m of milestones) {
+      const due = new Date(`${m.due_on}T00:00:00`);
+      if (due < range.start || due > range.end) continue;
+      const key = m.project_id ?? 'none';
+      const list = map.get(key) ?? [];
+      list.push({
         m,
-        due: new Date(`${m.due_on}T00:00:00`),
+        due,
         stat: milestoneStat(m, schedules),
         project: projectName.get(m.project_id) ?? '프로젝트 없음',
-      }))
-      .filter(({ due }) => due >= range.start && due <= range.end)
-      .sort((a, b) => +a.due - +b.due);
+      });
+      map.set(key, list);
+    }
+    for (const list of map.values()) list.sort((a, b) => +a.due - +b.due);
+    return map;
   }, [milestones, projects, schedules, range]);
 
   // 마우스를 올린 마일스톤. 호버 카드를 canvas 안에 절대 위치로 띄운다.
@@ -461,16 +493,11 @@ export function RoadmapView({
       {/* 좌측: 1열 프로젝트(세로) + 2열 업무구분 */}
       <div className="rm__tree" ref={treeRef}>
         <div style={{ height: totalHeight, position: 'relative' }}>
-          <div className="rm__treeband rm__treeband--ms" style={{ height: MS_LANE_H }}>
-            <span className="rm__mslabel">
-              마일스톤
-              <span className="badge">{visibleMilestones.length}</span>
-            </span>
-          </div>
           {bands.map((b) => (
             <div
               className="rm__treeband"
               key={b.key}
+              data-kind={b.kind}
               data-projectend={b.projectEnd}
               style={{ height: b.height }}
             >
@@ -530,8 +557,9 @@ export function RoadmapView({
             ))}
           </div>
 
-          {/* 마일스톤 수직 점선은 전체 높이로 내려간다 */}
-          {visibleMilestones.map(({ m, due, stat }) => (
+          {/* 수직 점선은 프로젝트를 가리지 않고 전체 높이로 내려간다 —
+              다른 프로젝트의 일정이 그 날짜에 어디 있는지도 같이 보인다 */}
+          {[...msByProject.values()].flat().map(({ m, due, stat }) => (
             <span
               key={`line-${m.id}`}
               className="rm__msline"
@@ -543,79 +571,72 @@ export function RoadmapView({
 
           {showToday && <span className="rm__today" style={{ left: todayX }} aria-hidden="true" />}
 
-          {/* 마일스톤 전용 줄 — 마커와 라벨이 여기 모인다 */}
-          <div className="rm__mslane" style={{ height: MS_LANE_H }}>
-            {showToday && <span className="rm__todaychip" style={{ left: todayX }}>오늘</span>}
-
-            {visibleMilestones.map(({ m, due, stat, project }) => {
-              const x = sc.x(due);
-              const open = hovered === m.id;
-              return (
-                <span key={m.id}>
-                  <button
-                    className="rm__msmark"
-                    data-late={stat.late}
-                    data-reached={m.status === 'reached'}
-                    style={{ left: x }}
-                    aria-label={`마일스톤 ${m.title}, ${m.due_on}, ${milestoneTiming(stat, m.status)}`}
-                    onMouseEnter={() => setHovered(m.id)}
-                    onMouseLeave={() => setHovered((h) => (h === m.id ? null : h))}
-                    onFocus={() => setHovered(m.id)}
-                    onBlur={() => setHovered((h) => (h === m.id ? null : h))}
-                    onClick={onOpenMilestones}
-                  />
-                  <span className="rm__mstext" style={{ left: x + 10 }} aria-hidden="true">
-                    {m.title}
-                  </span>
-
-                  {open && (
-                    <span className="rm__mscard" style={{ left: x }} role="tooltip">
-                      <b className="rm__mscardtitle">{m.title}</b>
-                      <span className="rm__mscardrow">
-                        <span>프로젝트</span>
-                        <b>{project}</b>
-                      </span>
-                      <span className="rm__mscardrow">
-                        <span>기한</span>
-                        <b>
-                          {m.due_on} · {milestoneTiming(stat, m.status)}
-                        </b>
-                      </span>
-                      <span className="rm__mscardrow">
-                        <span>관련 일정</span>
-                        <b>
-                          {stat.relatedCount === 0
-                            ? '없음'
-                            : `${stat.relatedCount}건 · 진행 ${stat.progress}%`}
-                        </b>
-                      </span>
-                      {stat.progress !== null && (
-                        <span className="rm__mscardbar">
-                          <span style={{ width: `${stat.progress}%` }} />
-                        </span>
-                      )}
-                      {m.description && <span className="rm__mscarddesc">{m.description}</span>}
-                      <span className="rm__mscardhint">클릭하면 마일스톤 목록으로 이동합니다</span>
-                    </span>
-                  )}
-                </span>
-              );
-            })}
-
-            {!visibleMilestones.length && (
-              <span className="rm__msempty">
-                이 기간에 마일스톤이 없습니다 — 마일스톤 탭에서 추가하세요
-              </span>
-            )}
-          </div>
+          {showToday && <span className="rm__todaychip" style={{ left: todayX }}>오늘</span>}
 
           {bands.map((b) => (
             <div
               className="rm__band"
               key={b.key}
+              data-kind={b.kind}
               data-projectend={b.projectEnd}
               style={{ height: b.height }}
             >
+              {b.kind === 'milestone' &&
+                (msByProject.get(b.projectId ?? 'none') ?? []).map(({ m, due, stat, project }) => {
+                  const x = sc.x(due);
+                  const open = hovered === m.id;
+                  return (
+                    <span key={m.id}>
+                      <button
+                        className="rm__msmark"
+                        data-late={stat.late}
+                        data-reached={m.status === 'reached'}
+                        style={{ left: x }}
+                        aria-label={`마일스톤 ${m.title}, ${m.due_on}, ${milestoneTiming(stat, m.status)}`}
+                        onMouseEnter={() => setHovered(m.id)}
+                        onMouseLeave={() => setHovered((h) => (h === m.id ? null : h))}
+                        onFocus={() => setHovered(m.id)}
+                        onBlur={() => setHovered((h) => (h === m.id ? null : h))}
+                        onClick={onOpenMilestones}
+                      />
+                      <span className="rm__mstext" style={{ left: x + 10 }} aria-hidden="true">
+                        {m.title}
+                      </span>
+
+                      {open && (
+                        <span className="rm__mscard" style={{ left: x }} role="tooltip">
+                          <b className="rm__mscardtitle">{m.title}</b>
+                          <span className="rm__mscardrow">
+                            <span>프로젝트</span>
+                            <b>{project}</b>
+                          </span>
+                          <span className="rm__mscardrow">
+                            <span>기한</span>
+                            <b>
+                              {m.due_on} · {milestoneTiming(stat, m.status)}
+                            </b>
+                          </span>
+                          <span className="rm__mscardrow">
+                            <span>관련 일정</span>
+                            <b>
+                              {stat.relatedCount === 0
+                                ? '없음'
+                                : `${stat.relatedCount}건 · 진행 ${stat.progress}%`}
+                            </b>
+                          </span>
+                          {stat.progress !== null && (
+                            <span className="rm__mscardbar">
+                              <span style={{ width: `${stat.progress}%` }} />
+                            </span>
+                          )}
+                          {m.description && <span className="rm__mscarddesc">{m.description}</span>}
+                          <span className="rm__mscardhint">클릭하면 마일스톤 목록으로 이동합니다</span>
+                        </span>
+                      )}
+                    </span>
+                  );
+                })}
+
               {b.bars.map((bar) => {
                 const s = bar.schedule;
                 // 보이는 기간과 겹치지 않으면 그리지 않는다. 줄과 높이는
