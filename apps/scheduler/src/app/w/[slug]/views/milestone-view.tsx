@@ -20,57 +20,16 @@ export function MilestoneView({ projects, milestones, schedules, workspaceId, ca
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [dueOn, setDueOn] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [desc, setDesc] = useState('');
   const [pending, start] = useTransition();
-
-  /*
-   * 고치는 중인 마일스톤의 초안.
-   *
-   * 입력할 때마다 저장하지 않는다 — 제목을 지웠다 다시 쓰는 도중의 값이
-   * 저장되면 다른 사람 화면에 그 중간 상태가 그대로 보인다. 저장을 눌렀을
-   * 때만 보낸다.
-   */
-  const [editing, setEditing] = useState<string | null>(null);
-  const [draft, setDraft] = useState({ title: '', dueOn: '', description: '', projectId: '' });
-
-  function beginEdit(m: Milestone) {
-    setEditing(m.id);
-    setDraft({
-      title: m.title,
-      dueOn: m.due_on,
-      description: m.description ?? '',
-      projectId: m.project_id,
-    });
-  }
-
-  function saveEdit(id: string) {
-    if (!draft.title.trim()) return onToast('이름을 입력해 주세요.');
-    start(async () => {
-      const res = await upsertMilestone({
-        id,
-        workspaceId,
-        projectId: draft.projectId,
-        title: draft.title,
-        dueOn: draft.dueOn,
-        description: draft.description,
-        // 상태는 여기서 건드리지 않는다 — '달성' 버튼이 따로 맡는다
-        status: milestones.find((m) => m.id === id)?.status,
-      });
-      if (!res.ok) return onToast(res.error ?? '저장하지 못했습니다.');
-      setEditing(null);
-      onToast('마일스톤을 수정했습니다.');
-    });
-  }
 
   // 로드맵 호버 카드와 같은 계산을 쓴다(schedule-core/milestone.ts)
   const statFor = useMemo(() => (m: Milestone) => milestoneStat(m, schedules), [schedules]);
 
   function submit(projectId: string) {
     start(async () => {
-      const res = await upsertMilestone({ workspaceId, projectId, title, dueOn, description: desc });
+      const res = await upsertMilestone({ workspaceId, projectId, title, dueOn });
       if (!res.ok) return onToast(res.error ?? '만들지 못했습니다.');
       setTitle('');
-      setDesc('');
       setAddingTo(null);
       onToast('마일스톤을 추가했습니다.');
     });
@@ -115,39 +74,27 @@ export function MilestoneView({ projects, milestones, schedules, workspaceId, ca
                   e.preventDefault();
                   submit(p.id);
                 }}
-                style={{ display: 'grid', gap: 6, marginBottom: 10 }}
+                style={{ display: 'flex', gap: 6, marginBottom: 10 }}
               >
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <input
-                    className="input"
-                    autoFocus
-                    required
-                    maxLength={120}
-                    placeholder="예: 베타 오픈"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                  />
-                  <input
-                    className="input"
-                    type="date"
-                    required
-                    style={{ width: 150 }}
-                    value={dueOn}
-                    onChange={(e) => setDueOn(e.target.value)}
-                  />
-                  <button className="btn btn--primary" disabled={pending}>
-                    추가
-                  </button>
-                </div>
-                {/* 만들 때도 설명을 받는다 — 고칠 때만 받으면 왜 지금은 없냐가 된다 */}
-                <textarea
-                  className="textarea"
-                  rows={2}
-                  maxLength={500}
-                  placeholder="설명 (선택) — 로드맵에서 이 표시에 마우스를 올리면 보입니다."
-                  value={desc}
-                  onChange={(e) => setDesc(e.target.value)}
+                <input
+                  className="input"
+                  autoFocus
+                  required
+                  placeholder="예: 베타 오픈"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
                 />
+                <input
+                  className="input"
+                  type="date"
+                  required
+                  style={{ width: 150 }}
+                  value={dueOn}
+                  onChange={(e) => setDueOn(e.target.value)}
+                />
+                <button className="btn btn--primary" disabled={pending}>
+                  추가
+                </button>
               </form>
             )}
 
@@ -158,79 +105,6 @@ export function MilestoneView({ projects, milestones, schedules, workspaceId, ca
                   const stat = statFor(m);
                   const late = stat.late;
                   const pct = stat.progress;
-
-                  if (editing === m.id) {
-                    return (
-                      <form
-                        className="ms__edit"
-                        key={m.id}
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          saveEdit(m.id);
-                        }}
-                      >
-                        <div className="ms__editrow">
-                          <label className="field">
-                            <span>이름</span>
-                            <input
-                              className="input"
-                              autoFocus
-                              required
-                              maxLength={120}
-                              value={draft.title}
-                              onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-                            />
-                          </label>
-                          <label className="field" style={{ maxWidth: 170 }}>
-                            <span>마감일</span>
-                            <input
-                              className="input"
-                              type="date"
-                              required
-                              value={draft.dueOn}
-                              onChange={(e) => setDraft({ ...draft, dueOn: e.target.value })}
-                            />
-                          </label>
-                        </div>
-
-                        <label className="field">
-                          <span>프로젝트</span>
-                          <select
-                            className="select"
-                            value={draft.projectId}
-                            onChange={(e) => setDraft({ ...draft, projectId: e.target.value })}
-                          >
-                            {projects.map((pr) => (
-                              <option key={pr.id} value={pr.id}>
-                                {pr.name}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-
-                        <label className="field">
-                          <span>설명 (선택)</span>
-                          <textarea
-                            className="textarea"
-                            rows={2}
-                            maxLength={500}
-                            placeholder="로드맵에서 이 표시에 마우스를 올리면 보입니다."
-                            value={draft.description}
-                            onChange={(e) => setDraft({ ...draft, description: e.target.value })}
-                          />
-                        </label>
-
-                        <div className="ms__editfoot">
-                          <button className="btn btn--primary" disabled={pending}>
-                            저장
-                          </button>
-                          <button type="button" className="btn" onClick={() => setEditing(null)}>
-                            취소
-                          </button>
-                        </div>
-                      </form>
-                    );
-                  }
 
                   return (
                     <div className="ms__item" key={m.id}>
@@ -259,13 +133,6 @@ export function MilestoneView({ projects, milestones, schedules, workspaceId, ca
                         </span>
                         {canEdit && (
                           <>
-                            <button
-                              className="btn btn--ghost"
-                              style={{ height: 24, fontSize: 11 }}
-                              onClick={() => beginEdit(m)}
-                            >
-                              수정
-                            </button>
                             <button
                               className="btn btn--ghost"
                               style={{ height: 24, fontSize: 11 }}
