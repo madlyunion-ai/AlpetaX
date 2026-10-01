@@ -20,7 +20,7 @@ import {
   startOfWeek,
 } from 'date-fns';
 import { createScale, laneCount, packLanes, type PackedBar } from '@/lib/schedule-core/layout';
-import { resizeSchedule } from '../../../actions';
+import { moveSchedule, resizeSchedule } from '../../../actions';
 import type { DateRange } from '@/lib/schedule-core/range';
 import { barColor } from './bar-color';
 import { milestoneStat, milestoneTiming } from '@/lib/schedule-core/milestone';
@@ -466,11 +466,20 @@ export function RoadmapView({
    */
   const [drag, setDrag] = useState<{
     id: string;
-    edge: 'start' | 'end';
+    /** 'move' 는 막대 전체, 'start'·'end' 는 그 끝만 */
+    edge: 'move' | 'start' | 'end';
     startX: number;
     updatedAt: string;
   } | null>(null);
-  const [ghost, setGhost] = useState<{ id: string; dx: number; edge: 'start' | 'end' } | null>(null);
+  const [ghost, setGhost] = useState<{ id: string; dx: number; edge: 'move' | 'start' | 'end' } | null>(
+    null,
+  );
+  /*
+   * 실제로 끌렸는지. 끌고 나면 브라우저가 click 을 한 번 더 보내는데,
+   * 그대로 두면 옮기자마자 상세 패널이 열린다. 몇 px 이상 움직였을 때만
+   * 세워 두고, 그 click 한 번을 삼킨다.
+   */
+  const dragged = useRef(false);
   const [, startTx] = useTransition();
 
   useEffect(() => {
@@ -478,7 +487,9 @@ export function RoadmapView({
     const pxPerDay = pxPerWeek / 7;
 
     function onMove(e: PointerEvent) {
-      setGhost({ id: drag!.id, dx: e.clientX - drag!.startX, edge: drag!.edge });
+      const dx = e.clientX - drag!.startX;
+      if (Math.abs(dx) > 3) dragged.current = true;
+      setGhost({ id: drag!.id, dx, edge: drag!.edge });
     }
 
     function onUp(e: PointerEvent) {
@@ -494,6 +505,14 @@ export function RoadmapView({
       startTx(async () => {
         const s = schedules.find((x) => x.id === d.id);
         if (!s) return;
+
+        if (d.edge === 'move') {
+          // 시작과 끝이 함께 움직인다 — 기간은 그대로다
+          const res = await moveSchedule(d.id, days * 1440, s.updated_at);
+          if (!res.ok) onToast(res.error ?? '옮기지 못했습니다.');
+          return;
+        }
+
         const base = new Date(d.edge === 'start' ? s.start_at : s.end_at);
         const next = new Date(base.getTime() + days * 86_400_000);
         const res = await resizeSchedule(d.id, d.edge, next.toISOString(), s.updated_at);
@@ -757,10 +776,11 @@ export function RoadmapView({
                  * 시작을 끌면 왼쪽 끝이, 끝을 끌면 오른쪽 폭이 따라온다.
                  */
                 const g = ghost?.id === s.id ? ghost : null;
-                const x = g?.edge === 'start' ? x0 + g.dx : x0;
-                const w = g
-                  ? Math.max(10, g.edge === 'start' ? w0 - g.dx : w0 + g.dx)
-                  : w0;
+                const x = g && (g.edge === 'start' || g.edge === 'move') ? x0 + g.dx : x0;
+                const w =
+                  g && g.edge !== 'move'
+                    ? Math.max(10, g.edge === 'start' ? w0 - g.dx : w0 + g.dx)
+                    : w0;
                 const days = differenceInCalendarDays(new Date(s.end_at), new Date(s.start_at)) + 1;
                 const past = new Date(s.end_at) < todayStart;
                 return (
@@ -777,7 +797,20 @@ export function RoadmapView({
                       top: BAND_PAD + bar.lane * (BAR_H + LANE_GAP),
                       background: barColor(s, b.barColor, markLate),
                     }}
-                    onClick={() => onSelect(s.id)}
+                    data-dragging={g?.edge === 'move'}
+                    onPointerDown={(e) => {
+                      if (!canEdit) return;
+                      dragged.current = false;
+                      setDrag({ id: s.id, edge: 'move', startX: e.clientX, updatedAt: s.updated_at });
+                    }}
+                    onClick={() => {
+                      // 끌어서 옮긴 뒤 따라오는 click 은 선택이 아니다
+                      if (dragged.current) {
+                        dragged.current = false;
+                        return;
+                      }
+                      onSelect(s.id);
+                    }}
                   >
                     <span className="rm__barfill" style={{ width: `${s.progress}%` }} />
                     {w >= 62 && <span className="rm__barlabel">{s.title}</span>}

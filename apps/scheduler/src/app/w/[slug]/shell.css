@@ -2514,3 +2514,19 @@ button.wsbox__only:hover {
 .rm__band[data-create='true'] {
   cursor: copy;
 }
+
+/* 막대를 끌어 옮길 수 있다는 표시 */
+.rm__bar {
+  cursor: grab;
+}
+.rm__bar[data-dragging='true'] {
+  cursor: grabbing;
+  /* 끄는 동안에는 들린 것처럼. 어느 막대를 쥐고 있는지 한눈에 보인다 */
+  box-shadow: 0 4px 10px -2px rgba(0, 0, 0, 0.35);
+  opacity: 0.9;
+  z-index: 4;
+}
+/* 손잡이 위에서는 '옮기기' 가 아니라 '늘이기' 다 */
+.rm__handle {
+  cursor: ew-resize;
+}
