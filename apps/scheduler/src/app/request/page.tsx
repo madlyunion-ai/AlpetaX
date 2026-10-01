@@ -34,7 +34,7 @@ function RequestForm() {
   const params = useSearchParams();
   /*
    * 주소를 링크로 지정할 수 있다 — /request?ws=union
-   * 팀 이름 목록조차 공개하고 싶지 않을 때, 마스터가 이 링크를 직접 건네면
+   * 워크스페이스 이름 목록조차 공개하고 싶지 않을 때, 이 링크를 직접 건네면
    * 고르는 칸 없이 그 워크스페이스로만 신청된다.
    */
   const fixed = params.get('ws');
@@ -116,10 +116,10 @@ function RequestForm() {
             </p>
 
             <form onSubmit={submit} style={{ display: 'grid', gap: 12 }}>
-              {/* 어느 팀으로 갈지 먼저 정한다 — 이름을 적기 전에 */}
+              {/* 어느 워크스페이스로 갈지 먼저 정한다 — 이름을 적기 전에 */}
               {!fixed && list && list.length > 1 && (
                 <label style={{ display: 'grid', gap: 5 }}>
-                  <span className="mono">참여할 팀</span>
+                  <span className="mono">참여할 워크스페이스</span>
                   <select
                     className="select"
                     value={slug}
