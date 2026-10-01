@@ -536,6 +536,8 @@ export function Shell(props: ShellProps) {
           ) : view === 'roadmap' ? (
             <RoadmapView
               range={range}
+              members={props.members}
+              assigneeMap={assigneesBySchedule}
               scale={scale}
               /* 로드맵만 전체를 받는다 — 트리의 줄이 기간에 따라 사라지지 않게 */
               schedules={filtered}

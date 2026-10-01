@@ -2530,3 +2530,52 @@ button.wsbox__only:hover {
 .rm__handle {
   cursor: ew-resize;
 }
+
+/* ── 막대 위의 담당자 ─────────────────────────────────────────────
+   마우스를 올렸을 때만 막대 좌측 상단에 겹쳐 나온다. 늘 띄우면 짧은
+   막대는 얼굴에 덮여 정작 기간이 보이지 않는다. */
+.rm__who {
+  position: absolute;
+  top: -7px;
+  left: -5px;
+  z-index: 5;
+  display: flex;
+  /* 노션처럼 서로 파고들게. 왼쪽 것이 위로 오도록 뒤에서부터 쌓는다. */
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  opacity: 0;
+  transform: translateY(2px);
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease;
+  pointer-events: none;
+}
+.rm__bar:hover .rm__who,
+.rm__bar:focus-visible .rm__who {
+  opacity: 1;
+  transform: none;
+}
+.rm__face {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  /* 테두리가 겹친 얼굴들을 갈라 준다. 없으면 한 덩어리로 뭉쳐 보인다. */
+  border: 2px solid var(--surface);
+  margin-right: -7px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  object-fit: cover;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+.rm__face:first-child {
+  margin-right: 0;
+}
+.rm__face--more {
+  background: var(--ink-3);
+  color: #fff;
+  font-size: 9px;
+}

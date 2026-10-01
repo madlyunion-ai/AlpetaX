@@ -26,7 +26,15 @@ import { barColor } from './bar-color';
 import { milestoneStat, milestoneTiming } from '@/lib/schedule-core/milestone';
 import { WEEK_STARTS_ON } from '@/lib/schedule-core/holidays';
 import { updateProject } from '../../../settings-actions';
-import type { Milestone, Phase, Project, Schedule, TimeScale } from '@/lib/schedule-core/types';
+import { memberLabel } from '@/lib/schedule-core/types';
+import type {
+  Membership,
+  Milestone,
+  Phase,
+  Project,
+  Schedule,
+  TimeScale,
+} from '@/lib/schedule-core/types';
 
 /** 스케일별 주 1칸의 폭. 헤더의 1W~4W 칸에 해당한다. */
 const PX_PER_WEEK: Record<TimeScale, number> = { day: 84, week: 54, month: 34, quarter: 21 };
@@ -109,6 +117,9 @@ interface Props {
   projects: Project[];
   phases: Phase[];
   milestones: Milestone[];
+  members: Membership[];
+  /** 일정 → 담당자 멤버십 id 목록 */
+  assigneeMap: Map<string, string[]>;
   /** 지연을 빨강으로 강조할지 — 툴바 스위치가 정한다 */
   markLate: boolean;
   selectedId: string | null;
@@ -163,6 +174,8 @@ export function RoadmapView({
   projects,
   phases,
   milestones,
+  members,
+  assigneeMap,
   markLate,
   selectedId,
   onSelect,
@@ -398,6 +411,8 @@ export function RoadmapView({
 
   // 오늘 0시. 이보다 앞서 끝난 일정은 지나간 것으로 흐리게 그린다.
   const todayStart = useMemo(() => startOfDay(new Date()), []);
+
+  const memberById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
 
   /*
    * 범위가 바뀌면 그만큼 스크롤을 되민다.
@@ -814,6 +829,48 @@ export function RoadmapView({
                   >
                     <span className="rm__barfill" style={{ width: `${s.progress}%` }} />
                     {w >= 62 && <span className="rm__barlabel">{s.title}</span>}
+
+                    {/*
+                      담당자. 평소에는 감춰 두고 마우스를 올렸을 때만 드러낸다 —
+                      늘 띄우면 짧은 막대는 얼굴에 가려 기간이 보이지 않는다.
+                      셋까지만 그리고 나머지는 숫자로 — 넷째부터는 서로 겹쳐
+                      누가 누군지 알아볼 수 없다.
+                    */}
+                    {(() => {
+                      const ids = assigneeMap.get(s.id) ?? [];
+                      if (!ids.length) return null;
+                      const people = ids.flatMap((id) => {
+                        const m = memberById.get(id);
+                        return m ? [m] : [];
+                      });
+                      if (!people.length) return null;
+                      const shown = people.slice(0, 3);
+                      const rest = people.length - shown.length;
+                      return (
+                        <span className="rm__who" aria-hidden="true">
+                          {shown.map((m) => {
+                            const name = memberLabel(m);
+                            // next/image 를 쓰지 않는 이유 — 구글 프로필 같은 외부
+                            // 주소라 remotePatterns 를 열어야 하고, 24px 아이콘에
+                            // 최적화 파이프라인을 태울 이득이 없다.
+                            return m.avatar_url ? (
+                              <img
+                                key={m.id}
+                                className="rm__face"
+                                src={m.avatar_url}
+                                alt=""
+                                title={name}
+                              />
+                            ) : (
+                              <span key={m.id} className="rm__face" title={name}>
+                                {name.slice(0, 1)}
+                              </span>
+                            );
+                          })}
+                          {rest > 0 && <span className="rm__face rm__face--more">+{rest}</span>}
+                        </span>
+                      );
+                    })()}
 
                     {/* 좌우 끝을 끌어 기간을 바꾼다. 막대 위에 겹쳐 두되
                         누르면 선택이 아니라 끌기가 되도록 전파를 끊는다. */}
