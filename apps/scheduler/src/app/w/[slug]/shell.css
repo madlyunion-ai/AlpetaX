@@ -2571,7 +2571,7 @@ button.wsbox__only:hover {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  /* 테두리가 겹친 얼굴들을 갈라 준다. 없으면 한 덩어리로 뭉쳐 보인다. */
+  /* 안쪽 흰 테는 겹친 얼굴들을 갈라 준다. 없으면 한 덩어리로 뭉쳐 보인다. */
   border: 2px solid var(--surface);
   margin-right: -7px;
   background: var(--accent-soft);
@@ -2581,7 +2581,17 @@ button.wsbox__only:hover {
   font-size: 10px;
   font-weight: 700;
   object-fit: cover;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  /*
+   * 바깥 한 겹을 더 두른다. 안쪽 테가 바탕과 같은 흰색이라, 흰 띠 위에서는
+   * 그 테가 사라져 얼굴이 배경에 녹아 보였다. 바깥 테는 테두리 색 토큰을
+   * 써서 밝은 테마·어두운 테마 양쪽에서 드러난다.
+   *
+   * border 를 하나 더 쓸 수 없으므로 box-shadow 의 퍼짐으로 그린다 —
+   * 자리를 차지하지 않아 겹침 간격이 그대로 유지된다.
+   */
+  box-shadow:
+    0 0 0 1px var(--frame-line),
+    0 1px 3px rgba(0, 0, 0, 0.28);
 }
 .rm__face:first-child {
   margin-right: 0;
@@ -2590,4 +2600,8 @@ button.wsbox__only:hover {
   background: var(--ink-3);
   color: #fff;
   font-size: 9px;
+}
+/* 사진이 아직 안 왔거나 깨졌을 때 빈 동그라미만 남지 않게 */
+img.rm__face {
+  background: var(--sunken);
 }
