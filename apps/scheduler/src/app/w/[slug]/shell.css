@@ -2396,3 +2396,31 @@
 .usermenu__item--out {
   color: var(--warn);
 }
+
+/* 새 워크스페이스 창. 일정 추가 창과 같은 바탕(.quick)을 쓴다. */
+.wsnew {
+  width: min(460px, 94vw);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+.wsnew__body {
+  padding: 16px;
+}
+/* 안에 들어가는 폼은 이미 판 위에 있으므로 테두리를 겹치지 않는다 */
+.wsnew__body > .panel {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+/* 하나뿐일 때의 이름 — 버튼이지만 글자처럼 보인다 */
+button.wsbox__only {
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+button.wsbox__only:hover {
+  background: var(--sunken);
+}

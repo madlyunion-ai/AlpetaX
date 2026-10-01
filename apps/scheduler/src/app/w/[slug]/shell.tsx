@@ -33,6 +33,7 @@ import { WorkloadView } from './views/workload-view';
 import { DetailPanel } from './detail-panel';
 import { QuickAdd } from './quick-add';
 import { WelcomeModal } from './welcome-modal';
+import { NewWorkspaceForm } from '../new-workspace-form';
 import './shell.css';
 
 /*
@@ -47,6 +48,9 @@ const SCALE_LABEL: Record<TimeScale, { roadmap: string; other: string }> = {
   month: { roadmap: '작게', other: '월' },
   quarter: { roadmap: '전체', other: '분기' },
 };
+
+/** 전환 상자에서 '만들기' 를 뜻하는 값. 주소로 쓰일 수 없는 모양이라 섞이지 않는다. */
+const NEW_WS = '__new__';
 
 const VIEW_LABEL: Record<ViewKind, string> = {
   roadmap: '로드맵',
@@ -163,6 +167,8 @@ export function Shell(props: ShellProps) {
    * null 이면 지금까지처럼 필터·첫 프로젝트를 따른다.
    */
   const [quickProject, setQuickProject] = useState<string | null>(null);
+  /* 새 워크스페이스 만들기 창 */
+  const [wsNew, setWsNew] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -464,18 +470,31 @@ export function Shell(props: ShellProps) {
                   className="wsbox__pick"
                   aria-label="워크스페이스"
                   value={workspace.slug}
-                  onChange={(e) => router.push(`/w/${e.target.value}`)}
+                  onChange={(e) => {
+                    if (e.target.value === NEW_WS) return setWsNew(true);
+                    router.push(`/w/${e.target.value}`);
+                  }}
                 >
                   {props.myWorkspaces.map((w) => (
                     <option key={w.id} value={w.slug}>
                       {w.name}
                     </option>
                   ))}
+                  <option value={NEW_WS}>+ 새 워크스페이스…</option>
                 </select>
               ) : (
-                <span className="wsbox__only" title={workspace.name}>
+                /*
+                 * 하나뿐이어도 만들 길은 있어야 한다. 목록이 없다고 해서
+                 * 더 만들 수 없는 것은 아니다.
+                 */
+                <button
+                  type="button"
+                  className="wsbox__only"
+                  title={`${workspace.name} — 눌러서 새 워크스페이스 만들기`}
+                  onClick={() => setWsNew(true)}
+                >
                   {workspace.name}
-                </span>
+                </button>
               )}
               <Link
                 className="wsbox__gear"
@@ -622,6 +641,30 @@ export function Shell(props: ShellProps) {
             setQuickOpen(true);
           }}
         />
+      )}
+
+      {wsNew && (
+        <div
+          className="quick"
+          onMouseDown={(e) => e.target === e.currentTarget && setWsNew(false)}
+        >
+          <div className="wsnew">
+            <div className="qf__head">
+              <h2 className="qf__title">새 워크스페이스</h2>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                aria-label="닫기"
+                onClick={() => setWsNew(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="wsnew__body">
+              <NewWorkspaceForm />
+            </div>
+          </div>
+        </div>
       )}
 
       {quickOpen && (

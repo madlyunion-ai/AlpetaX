@@ -26,6 +26,7 @@ import {
   deleteRequest,
   deleteTeam,
   deleteWorkspace,
+  leaveWorkspace,
   movePhase,
   rejectRequest,
   removeMember,
@@ -984,6 +985,36 @@ function WorkspaceSection({
           </>
         )}
       </p>
+
+      {/*
+        나가기. 마지막 소유자만 막는다 — 나가 버리면 아무도 관리할 수 없고
+        지우지도 못하는 워크스페이스가 남는다. 그 판정은 DB 함수가 한다.
+      */}
+      <h3 className="set__h3" style={{ marginTop: 28 }}>
+        워크스페이스 나가기
+      </h3>
+      <p className="set__lead">
+        내 멤버십만 사라집니다. 일정과 프로젝트는 그대로 남고, 다시 들어오려면
+        관리자의 승인이 필요합니다.
+      </p>
+      <div className="set__actions">
+        <button
+          className="btn"
+          onClick={() => {
+            if (!window.confirm(`${workspace.name} 에서 나갑니다. 계속할까요?`)) return;
+            run(async () => {
+              const res = await leaveWorkspace(workspace.id);
+              if (res.ok) {
+                say('나왔습니다.');
+                router.replace('/w');
+              }
+              return res;
+            });
+          }}
+        >
+          나가기
+        </button>
+      </div>
 
       {isOwner && (
         <>

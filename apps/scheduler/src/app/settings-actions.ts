@@ -489,3 +489,18 @@ export async function deleteWorkspace(
   touch();
   return ok();
 }
+
+/**
+ * 워크스페이스에서 스스로 나간다.
+ *
+ * 멤버십 삭제 정책은 관리자 전용이라 본인도 지울 수 없다. 정책을 넓히는 대신
+ * DB 함수로 좁은 길을 냈다 — '내보내기' 와 규칙을 섞지 않기 위해서다.
+ * 마지막 소유자 보호도 그 안에서 한다.
+ */
+export async function leaveWorkspace(workspaceId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('leave_workspace', { ws: workspaceId });
+  if (error) return fail(error.message);
+  touch();
+  return ok();
+}
