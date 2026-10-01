@@ -167,6 +167,7 @@ export function Shell(props: ShellProps) {
    * null 이면 지금까지처럼 필터·첫 프로젝트를 따른다.
    */
   const [quickProject, setQuickProject] = useState<string | null>(null);
+  const [quickPhase, setQuickPhase] = useState<string | null>(null);
   /* 새 워크스페이스 만들기 창 */
   const [wsNew, setWsNew] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -333,8 +334,24 @@ export function Shell(props: ShellProps) {
   const openQuickForProject = useCallback((projectId: string) => {
     setQuickSeed(null);
     setQuickProject(projectId);
+    setQuickPhase(null);
     setQuickOpen(true);
   }, []);
+
+  /**
+   * 로드맵의 빈 칸을 눌렀을 때. 누른 자리가 곧 입력값이다 —
+   * 그 줄의 프로젝트·업무구분과 그 지점의 날짜로 폼이 채워진다.
+   */
+  const openQuickAt = useCallback(
+    (o: { projectId: string | null; phaseName: string; start: Date; end: Date }) => {
+      setQuickSeed({ start: o.start, end: o.end, allDay: true });
+      setQuickProject(o.projectId);
+      // 줄 제목으로 업무구분을 되찾는다. '미지정' 줄이면 고르지 않은 채로 둔다.
+      setQuickPhase(props.phases.find((p) => p.name === o.phaseName)?.id ?? null);
+      setQuickOpen(true);
+    },
+    [props.phases],
+  );
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -524,6 +541,7 @@ export function Shell(props: ShellProps) {
               schedules={filtered}
               onReachEdge={stepRange}
               onAddSchedule={canEdit ? openQuickForProject : undefined}
+              onCreateAt={canEdit ? openQuickAt : undefined}
               projects={props.projects}
               phases={props.phases}
               milestones={props.milestones}
@@ -677,10 +695,12 @@ export function Shell(props: ShellProps) {
           projects={props.projects}
           schedules={props.schedules}
           defaultProjectId={quickProject ?? filters.projectIds?.[0] ?? props.projects[0]?.id ?? null}
+          defaultPhaseId={quickPhase}
           seed={quickSeed}
           onClose={() => {
             setQuickOpen(false);
             setQuickProject(null);
+            setQuickPhase(null);
           }}
           onToast={say}
         />

@@ -1,6 +1,14 @@
 'use client';
 
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, useTransition } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from 'react';
 import Link from 'next/link';
 import {
   addDays,
@@ -12,6 +20,7 @@ import {
   startOfWeek,
 } from 'date-fns';
 import { createScale, laneCount, packLanes, type PackedBar } from '@/lib/schedule-core/layout';
+import { resizeSchedule } from '../../../actions';
 import type { DateRange } from '@/lib/schedule-core/range';
 import { barColor } from './bar-color';
 import { milestoneStat, milestoneTiming } from '@/lib/schedule-core/milestone';
@@ -112,6 +121,16 @@ interface Props {
   onReachEdge?: (dir: -1 | 1) => void;
   /** 프로젝트 라벨의 '일정추가' — 그 프로젝트가 미리 골라진 채로 열린다 */
   onAddSchedule?: (projectId: string) => void;
+  /**
+   * 빈 칸을 눌렀을 때. 그 자리의 날짜와 그 줄의 프로젝트·업무구분으로
+   * 일정 만들기를 연다 — 어디를 눌렀는지가 곧 입력값이다.
+   */
+  onCreateAt?: (opts: {
+    projectId: string | null;
+    phaseName: string;
+    start: Date;
+    end: Date;
+  }) => void;
   /** 마일스톤 마커를 눌렀을 때 — 마일스톤 뷰로 보낸다 */
   onOpenMilestones: () => void;
   canEdit: boolean;
@@ -149,6 +168,7 @@ export function RoadmapView({
   onSelect,
   onReachEdge,
   onAddSchedule,
+  onCreateAt,
   onOpenMilestones,
   canEdit,
   workspaceSlug,
@@ -436,7 +456,59 @@ export function RoadmapView({
 
   /** 좌측 세로 라벨을 눌러 여는 프로젝트 설정. top 은 클릭 지점에 맞춘다. */
   const [editing, setEditing] = useState<{ id: string; top: number } | null>(null);
+
+  /*
+   * 막대 끝을 끌어 기간을 바꾼다.
+   *
+   * 끄는 동안에는 화면에서만 움직이고(ghost), 손을 뗄 때 한 번 저장한다.
+   * 움직일 때마다 보내면 요청이 수십 번 나가고, 중간 값이 다른 사람 화면에
+   * 그대로 비친다.
+   */
+  const [drag, setDrag] = useState<{
+    id: string;
+    edge: 'start' | 'end';
+    startX: number;
+    updatedAt: string;
+  } | null>(null);
+  const [ghost, setGhost] = useState<{ id: string; dx: number; edge: 'start' | 'end' } | null>(null);
   const [, startTx] = useTransition();
+
+  useEffect(() => {
+    if (!drag) return;
+    const pxPerDay = pxPerWeek / 7;
+
+    function onMove(e: PointerEvent) {
+      setGhost({ id: drag!.id, dx: e.clientX - drag!.startX, edge: drag!.edge });
+    }
+
+    function onUp(e: PointerEvent) {
+      const dx = e.clientX - drag!.startX;
+      // 로드맵은 날 단위 화면이다. 시간 단위로 끌 수 있게 해도 눈으로 확인할
+      // 방법이 없으므로 하루로 맞춘다.
+      const days = Math.round(dx / pxPerDay);
+      const d = drag!;
+      setGhost(null);
+      setDrag(null);
+      if (!days) return;
+
+      startTx(async () => {
+        const s = schedules.find((x) => x.id === d.id);
+        if (!s) return;
+        const base = new Date(d.edge === 'start' ? s.start_at : s.end_at);
+        const next = new Date(base.getTime() + days * 86_400_000);
+        const res = await resizeSchedule(d.id, d.edge, next.toISOString(), s.updated_at);
+        if (!res.ok) onToast(res.error ?? '기간을 바꾸지 못했습니다.');
+      });
+    }
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp, { once: true });
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [drag, pxPerWeek, schedules, onToast]);
+
   const rootRef = useRef<HTMLDivElement>(null);
 
   const editingProject = editing ? (projects.find((p) => p.id === editing.id) ?? null) : null;
@@ -654,15 +726,41 @@ export function RoadmapView({
               className="rm__band"
               key={b.key}
               data-projectend={b.projectEnd}
+              data-create={Boolean(onCreateAt)}
               style={{ height: b.height }}
+              onClick={(e) => {
+                /*
+                 * 막대가 아닌 빈 자리를 눌렀을 때만. 막대 위에서는 그 막대의
+                 * 핸들러가 먼저 가져가므로 여기까지 오지 않는다.
+                 */
+                if (!onCreateAt || e.target !== e.currentTarget) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const start = startOfDay(sc.date(e.clientX - rect.left));
+                // 기본 한 주. 누른 자리에서 시작해 폼에서 고치는 흐름이다.
+                onCreateAt({
+                  projectId: b.projectId,
+                  phaseName: b.phaseName,
+                  start,
+                  end: new Date(+start + 6 * 86_400_000),
+                });
+              }}
             >
               {b.bars.map((bar) => {
                 const s = bar.schedule;
                 // 보이는 기간과 겹치지 않으면 그리지 않는다. 줄과 높이는
                 // 이미 잡혀 있으므로 자리는 그대로 남는다.
                 if (new Date(s.end_at) < range.start || new Date(s.start_at) > range.end) return null;
-                const x = sc.x(s.start_at);
-                const w = Math.max(10, sc.x(s.end_at) - x);
+                const x0 = sc.x(s.start_at);
+                const w0 = Math.max(10, sc.x(s.end_at) - x0);
+                /*
+                 * 끄는 동안에는 저장하지 않고 이 막대만 움직여 보여 준다.
+                 * 시작을 끌면 왼쪽 끝이, 끝을 끌면 오른쪽 폭이 따라온다.
+                 */
+                const g = ghost?.id === s.id ? ghost : null;
+                const x = g?.edge === 'start' ? x0 + g.dx : x0;
+                const w = g
+                  ? Math.max(10, g.edge === 'start' ? w0 - g.dx : w0 + g.dx)
+                  : w0;
                 const days = differenceInCalendarDays(new Date(s.end_at), new Date(s.start_at)) + 1;
                 const past = new Date(s.end_at) < todayStart;
                 return (
@@ -683,6 +781,25 @@ export function RoadmapView({
                   >
                     <span className="rm__barfill" style={{ width: `${s.progress}%` }} />
                     {w >= 62 && <span className="rm__barlabel">{s.title}</span>}
+
+                    {/* 좌우 끝을 끌어 기간을 바꾼다. 막대 위에 겹쳐 두되
+                        누르면 선택이 아니라 끌기가 되도록 전파를 끊는다. */}
+                    {canEdit &&
+                      (['start', 'end'] as const).map((edge) => (
+                        <span
+                          key={edge}
+                          className="rm__handle"
+                          data-edge={edge}
+                          role="button"
+                          aria-label={edge === 'start' ? '시작 조절' : '종료 조절'}
+                          tabIndex={-1}
+                          onClick={(e) => e.stopPropagation()}
+                          onPointerDown={(e) => {
+                            e.stopPropagation();
+                            setDrag({ id: s.id, edge, startX: e.clientX, updatedAt: s.updated_at });
+                          }}
+                        />
+                      ))}
                   </button>
                 );
               })}

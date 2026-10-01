@@ -25,6 +25,8 @@ interface Props {
   projects: Project[];
   schedules: Schedule[];
   defaultProjectId: string | null;
+  /** 눌러서 연 자리의 업무구분. 그 줄에서 만들기 시작했으므로 미리 고른다. */
+  defaultPhaseId?: string | null;
   /** 캔버스에서 드래그·더블클릭으로 연 경우의 기간 */
   seed: { start: Date; end: Date; allDay: boolean } | null;
   onClose: () => void;
@@ -43,6 +45,7 @@ export function QuickAdd({
   projects,
   schedules,
   defaultProjectId,
+  defaultPhaseId,
   seed,
   onClose,
   onToast,
@@ -63,7 +66,7 @@ export function QuickAdd({
   /** '' = 자동(기간으로 추론). 고르면 그 값으로 고정된다. */
   const [horizon, setHorizon] = useState<Horizon | ''>('');
   const [status, setStatus] = useState<SchedStatus>('planned');
-  const [phaseId, setPhaseId] = useState('');
+  const [phaseId, setPhaseId] = useState(defaultPhaseId ?? '');
   const [teamId, setTeamId] = useState('');
   const [projectId, setProjectId] = useState(defaultProjectId ?? '');
   const [parentId, setParentId] = useState('');
