@@ -2229,29 +2229,35 @@
   place-items: center;
 }
 
-/* 프로젝트 라벨 안의 '일정추가'.
-   바탕이 프로젝트 색이라 흰 글자에 옅은 판을 깔아 읽히게 한다. */
+/*
+ * 프로젝트 라벨 안의 '일정 추가'.
+ * 사이드바의 '+ 새 프로젝트'(.sidebar__add)와 같은 형태 — 테두리 없는
+ * 투명 버튼에 왼쪽 정렬이다. 색만 다르다: 여기는 바탕이 프로젝트 색이라
+ * 사이드바의 회색 글자를 그대로 쓰면 읽히지 않는다.
+ */
 .rm__addhere {
-  flex: none;
-  max-width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.38);
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
-  padding: 4px 7px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  /* 버튼의 안쪽 여백만큼 당겨 글자 시작점을 프로젝트 이름과 맞춘다 */
+  margin-left: -6px;
+  padding: 3.5px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
   cursor: pointer;
+  text-align: left;
+  font-size: 13px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition:
     background-color 0.14s ease,
-    border-color 0.14s ease;
+    color 0.14s ease;
 }
 .rm__addhere:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.6);
-}
-.rm__addhere:active {
-  transform: translateY(0.5px);
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
 }

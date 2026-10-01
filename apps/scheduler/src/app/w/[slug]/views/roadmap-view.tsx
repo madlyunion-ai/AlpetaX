@@ -497,7 +497,7 @@ export function RoadmapView({
                       title={`${b.projectName} 에 일정 추가`}
                       onClick={() => onAddSchedule(b.projectId!)}
                     >
-                      + 일정추가
+                      + 일정 추가
                     </button>
                   )}
                   {b.projectId && (
