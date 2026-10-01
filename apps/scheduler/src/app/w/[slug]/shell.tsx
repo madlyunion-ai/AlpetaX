@@ -573,6 +573,7 @@ export function Shell(props: ShellProps) {
           ) : view === 'timeline' ? (
             <TimelineView
               range={range}
+              projects={props.projects}
               scale={scale}
               schedules={inRange}
               milestones={props.milestones}

@@ -2,7 +2,6 @@
 
 import { useRef, useEffect, useMemo, useState, useTransition } from 'react';
 import { format } from 'date-fns';
-import { groupByProject } from '@/lib/schedule-core/layout';
 import { inferHorizon } from '@/lib/schedule-core/horizon';
 import {
   HORIZON_LABEL,
@@ -128,6 +127,18 @@ export function QuickAdd({
     setEnd((v) => (next ? v.slice(0, 10) : `${v.slice(0, 10)}T18:00`));
   }
 
+  /*
+   * 상위로 고를 수 있는 일정 — 지금 고른 프로젝트 안의 것만.
+   *
+   * 다른 프로젝트의 일을 상위로 두면 그 일정이 어느 쪽에도 온전히 속하지
+   * 않는 모양이 된다. 프로젝트를 안 골랐으면 소속 없는 일정끼리만 묶는다.
+   */
+  const parentChoices = useMemo(() => {
+    // 아직 만들지 않은 프로젝트에는 상위로 삼을 일정이 없다
+    if (projectId === 'new') return [];
+    return schedules.filter((s) => (s.project_id ?? '') === projectId);
+  }, [schedules, projectId]);
+
   const startAt = allDay ? new Date(`${start}T00:00`) : new Date(start);
   const endAt = allDay ? new Date(`${end}T23:59`) : new Date(end);
   const valid = start && end && !Number.isNaN(+startAt) && !Number.isNaN(+endAt) && endAt >= startAt;
@@ -205,7 +216,13 @@ export function QuickAdd({
               id="q-project"
               className="select"
               value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
+              onChange={(e) => {
+                setProjectId(e.target.value);
+                // 상위 일정은 같은 프로젝트 안에서만 고른다. 프로젝트가 바뀌면
+                // 이미 고른 값이 그 밖이 되므로 함께 비운다 — 남겨 두면
+                // 화면에는 '없음' 인데 저장은 옛 값으로 된다.
+                setParentId('');
+              }}
             >
               <option value="">지정 안 함</option>
               {projects.map((p) => (
@@ -359,14 +376,10 @@ export function QuickAdd({
                 onChange={(e) => setParentId(e.target.value)}
               >
                 <option value="">없음</option>
-                {groupByProject(schedules, projects).map((g) => (
-                  <optgroup key={g.name} label={g.name}>
-                    {g.items.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.title}
-                      </option>
-                    ))}
-                  </optgroup>
+                {parentChoices.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.title}
+                  </option>
                 ))}
               </select>
             </div>

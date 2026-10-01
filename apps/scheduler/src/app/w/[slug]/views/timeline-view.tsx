@@ -13,6 +13,7 @@ import {
   type Dependency,
   type Horizon,
   type Milestone,
+  type Project,
   type Schedule,
   type Team,
   type TimeScale,
@@ -27,6 +28,7 @@ interface Props {
   scale: TimeScale;
   schedules: Schedule[];
   milestones: Milestone[];
+  projects: Project[];
   teamById: Map<string, Team>;
   dependencies: Dependency[];
   /** 지연을 빨강으로 강조할지 — 툴바 스위치가 정한다 */
@@ -46,6 +48,7 @@ export function TimelineView({
   scale,
   schedules,
   milestones,
+  projects,
   teamById,
   dependencies,
   markLate,
@@ -64,8 +67,18 @@ export function TimelineView({
     if (scale === 'day') return new Set<Horizon>(['long']);
     return new Set<Horizon>();
   }, [scale]);
-  const [manualSections, setManualSections] = useState<Map<Horizon, boolean>>(new Map());
-  const isSectionOpen = (h: Horizon) => manualSections.get(h) ?? !autoCollapsed.has(h);
+  /*
+   * 무엇으로 묶어 볼 것인가.
+   *
+   * 프로젝트별이 기본이다 — "이 프로젝트가 어떻게 흘러가나" 가 가장 자주
+   * 묻는 질문이다. 기간별(장기·중기·단기)은 남겨 둔다. 같은 일정을 다른
+   * 축으로 보는 것이고, 한쪽을 지우면 그 시선을 아예 잃는다.
+   */
+  const [groupBy, setGroupBy] = useState<'project' | 'horizon'>('project');
+  const [manualSections, setManualSections] = useState<Map<string, boolean>>(new Map());
+  // 기간별일 때만 축척에 따라 자동으로 접힌다. 프로젝트에는 그런 기준이 없다.
+  const isSectionOpen = (key: string) =>
+    manualSections.get(key) ?? !(groupBy === 'horizon' && autoCollapsed.has(key as Horizon));
 
   const [drag, setDrag] = useState<Drag | null>(null);
   const [ghost, setGhost] = useState<{ id: string; dx: number; edge?: 'start' | 'end' } | null>(null);
@@ -83,23 +96,36 @@ export function TimelineView({
     if (treeRef.current) treeRef.current.scrollTop = el.scrollTop;
   }, []);
 
-  /* ── horizon 섹션별 행 ─────────────────────────────────────────── */
+  /* ── 섹션 ───────────────────────────────────────────────────────── */
   const sections = useMemo(() => {
-    return HORIZON_ORDER.map((h) => ({
-      horizon: h,
-      rows: flattenTree(
-        schedules.filter((s) => s.horizon === h),
-        collapsedRows,
-      ),
-    }));
-  }, [schedules, collapsedRows]);
+    const make = (key: string, label: string, color: string | undefined, list: Schedule[]) => ({
+      key,
+      label,
+      color,
+      rows: flattenTree(list, collapsedRows),
+    });
+
+    if (groupBy === 'horizon') {
+      return HORIZON_ORDER.map((h) =>
+        make(h, HORIZON_LABEL[h], `var(--${h})`, schedules.filter((s) => s.horizon === h)),
+      );
+    }
+
+    const out = projects.map((p) =>
+      make(p.id, p.name, p.color, schedules.filter((s) => s.project_id === p.id)),
+    );
+    const orphans = schedules.filter((s) => !s.project_id);
+    if (orphans.length) out.push(make('__none__', '프로젝트 없음', undefined, orphans));
+    // 빈 프로젝트는 접힌 제목만 남아 자리만 차지한다
+    return out.filter((sec) => sec.rows.length > 0);
+  }, [groupBy, schedules, projects, collapsedRows]);
 
   const rowIndex = useMemo(() => {
     const map = new Map<string, number>();
     let y = 0;
     for (const sec of sections) {
       y += SECTION_H;
-      if (!isSectionOpen(sec.horizon)) continue;
+      if (!isSectionOpen(sec.key)) continue;
       for (const r of sec.rows) {
         map.set(r.schedule.id, y);
         y += ROW_H;
@@ -107,17 +133,17 @@ export function TimelineView({
     }
     return map;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sections, manualSections, autoCollapsed]);
+  }, [sections, manualSections, autoCollapsed, groupBy]);
 
   const totalHeight = useMemo(() => {
     let y = 0;
     for (const sec of sections) {
       y += SECTION_H;
-      if (isSectionOpen(sec.horizon)) y += sec.rows.length * ROW_H;
+      if (isSectionOpen(sec.key)) y += sec.rows.length * ROW_H;
     }
     return Math.max(y, 200);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sections, manualSections, autoCollapsed]);
+  }, [sections, manualSections, autoCollapsed, groupBy]);
 
   /* ── 드래그 ────────────────────────────────────────────────────── */
   useEffect(() => {
@@ -357,30 +383,46 @@ export function TimelineView({
     <div className="gantt">
       <div className="gantt__tree">
         <div className="gantt__treehead">
-          <span className="mono">일정</span>
+          <select
+            className="gantt__groupby"
+            aria-label="묶는 기준"
+            value={groupBy}
+            onChange={(e) => {
+              setGroupBy(e.target.value as 'project' | 'horizon');
+              // 기준이 바뀌면 접어 둔 기억은 뜻을 잃는다 — 열쇠가 다른 값이다
+              setManualSections(new Map());
+            }}
+          >
+            <option value="project">프로젝트별</option>
+            <option value="horizon">기간별</option>
+          </select>
         </div>
         <div className="gantt__treebody" ref={treeRef}>
           {sections.map((sec) => (
-            <div key={sec.horizon}>
+            <div key={sec.key}>
               <button
                 className="gantt__section"
-                style={{ ['--h' as string]: `var(--${sec.horizon})` }}
+                style={{ ['--h' as string]: sec.color ?? 'var(--ink-3)' }}
                 onClick={() =>
-                  setManualSections(new Map(manualSections).set(sec.horizon, !isSectionOpen(sec.horizon)))
+                  setManualSections(new Map(manualSections).set(sec.key, !isSectionOpen(sec.key)))
                 }
-                aria-expanded={isSectionOpen(sec.horizon)}
+                aria-expanded={isSectionOpen(sec.key)}
               >
                 <span style={{ color: 'var(--ink-3)', fontSize: 10 }}>
-                  {isSectionOpen(sec.horizon) ? '▼' : '▶'}
+                  {isSectionOpen(sec.key) ? '▼' : '▶'}
                 </span>
-                <span className="gantt__sectionname" style={{ ['--h' as string]: `var(--${sec.horizon})` }}>
-                  {HORIZON_LABEL[sec.horizon]}
+                <span
+                  className="gantt__sectionname"
+                  style={{ ['--h' as string]: sec.color ?? 'var(--ink-3)' }}
+                  title={sec.label}
+                >
+                  {sec.label}
                 </span>
                 <span className="mono" style={{ fontSize: 10 }}>
                   {sec.rows.length}
                 </span>
               </button>
-              {isSectionOpen(sec.horizon) && sec.rows.map((r) => renderRow(r, true))}
+              {isSectionOpen(sec.key) && sec.rows.map((r) => renderRow(r, true))}
             </div>
           ))}
         </div>
@@ -451,9 +493,9 @@ export function TimelineView({
             {showToday && <span className="gantt__today" style={{ left: todayX }} aria-hidden="true" />}
 
             {sections.map((sec) => (
-              <div key={sec.horizon}>
+              <div key={sec.key}>
                 <div className="gantt__sectionspacer" />
-                {isSectionOpen(sec.horizon) && sec.rows.map((r) => renderRow(r, false))}
+                {isSectionOpen(sec.key) && sec.rows.map((r) => renderRow(r, false))}
               </div>
             ))}
           </div>
