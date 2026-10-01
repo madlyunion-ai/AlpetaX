@@ -153,9 +153,14 @@ export default async function WorkspacePage({
       .returns<Milestone[]>(),
     // 내가 속한 워크스페이스 전부 — 상단에서 바로 옮겨 다니기 위해.
     // 같은 묶음에 넣으므로 왕복이 늘지 않는다.
+    //
+    // user_id 를 거르는 것이 핵심이다. RLS 는 내 워크스페이스의 멤버십을
+    // 전부 읽게 열어 주므로(멤버 목록을 위해), 걸러 두지 않으면 멤버 수만큼
+    // 같은 워크스페이스가 되풀이된다.
     supabase
       .from('memberships')
       .select('role, workspaces(id, name, slug)')
+      .eq('user_id', user.id)
       .order('created_at'),
   ]);
 

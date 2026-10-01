@@ -21,9 +21,13 @@ export default async function WorkspacePicker() {
    */
   await supabase.rpc('claim_invitations');
 
+  // RLS 는 내 워크스페이스의 멤버십을 전부 읽게 열어 준다(멤버 목록을 위해).
+  // 내 소속만 세려면 user_id 를 직접 걸러야 한다 — 걸러 두지 않으면 멤버가
+  // 세 명인 워크스페이스 하나가 세 줄로 나온다.
   const { data: memberships } = await supabase
     .from('memberships')
     .select('role, workspaces(id, name, slug)')
+    .eq('user_id', user.id)
     .order('created_at');
 
   const list = (memberships ?? []).flatMap((m) => {
