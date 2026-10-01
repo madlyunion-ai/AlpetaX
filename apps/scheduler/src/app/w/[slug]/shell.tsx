@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { format } from 'date-fns';
@@ -482,7 +483,7 @@ export function Shell(props: ShellProps) {
                 aria-label="워크스페이스 설정"
                 title="워크스페이스 설정"
               >
-                <GearIcon />
+                <SlidersIcon />
               </Link>
             </div>
 
@@ -650,12 +651,34 @@ export function Shell(props: ShellProps) {
   );
 }
 
-/** 톱니바퀴. 설정으로 가는 곳마다 같은 모양을 쓴다. */
-function GearIcon() {
+/** 설정 손잡이. 값을 조절한다는 뜻이 톱니바퀴보다 또렷하다. */
+function SlidersIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <path d="M2 5h2M10 5h12M2 12h12M20 12h2M2 19h2M10 19h12" />
+      <circle cx="7" cy="5" r="2.6" />
+      <circle cx="17" cy="12" r="2.6" />
+      <circle cx="7" cy="19" r="2.6" />
+    </svg>
+  );
+}
+
+/** 세로 점 세 개 — 로드맵 트리의 프로젝트 메뉴와 같은 모양. */
+function DotsIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-      <path d="M8 10.2a2.2 2.2 0 1 1 0-4.4 2.2 2.2 0 0 1 0 4.4zm0-1.3a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8z" />
-      <path d="M7.1 1.2h1.8l.2 1.4c.4.12.78.28 1.12.5l1.16-.84 1.28 1.28-.84 1.16c.22.34.38.72.5 1.12l1.4.2v1.8l-1.4.2c-.12.4-.28.78-.5 1.12l.84 1.16-1.28 1.28-1.16-.84c-.34.22-.72.38-1.12.5l-.2 1.4H7.1l-.2-1.4c-.4-.12-.78-.28-1.12-.5l-1.16.84L3.34 11.3l.84-1.16c-.22-.34-.38-.72-.5-1.12l-1.4-.2V7.02l1.4-.2c.12-.4.28-.78.5-1.12L3.34 4.54 4.62 3.26l1.16.84c.34-.22.72-.38 1.12-.5l.2-1.4z" opacity=".55" />
+      <circle cx="8" cy="3.4" r="1.4" />
+      <circle cx="8" cy="8" r="1.4" />
+      <circle cx="8" cy="12.6" r="1.4" />
     </svg>
   );
 }
@@ -668,13 +691,21 @@ function GearIcon() {
  */
 function UserMenu({ me, slug }: { me: Membership; slug: string }) {
   const [open, setOpen] = useState(false);
+  /*
+   * 메뉴를 어디에 띄울지. 툴바가 overflow 를 자르므로 그 안에 absolute 로
+   * 두면 그려지기는 해도 잘려서 보이지 않는다 — 눌러도 아무 일이 없는 것처럼
+   * 보이던 원인이다. body 로 내보내고 좌표를 직접 잡는다.
+   */
+  const [at, setAt] = useState<{ top: number; right: number } | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  // 바깥을 누르거나 Esc 로 닫는다. 열어 둔 채 다른 곳을 만지면 가린다.
+  // 바깥을 누르거나 Esc 로 닫는다. 메뉴는 body 에 있으므로 따로 확인한다.
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (!boxRef.current?.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (!boxRef.current?.contains(t) && !menuRef.current?.contains(t)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false);
@@ -688,6 +719,13 @@ function UserMenu({ me, slug }: { me: Membership; slug: string }) {
   }, [open]);
 
   const label = memberLabel(me);
+
+  function toggle() {
+    if (open) return setOpen(false);
+    const r = boxRef.current?.getBoundingClientRect();
+    if (r) setAt({ top: r.bottom + 6, right: window.innerWidth - r.right });
+    setOpen(true);
+  }
 
   return (
     <div className="userbox" ref={boxRef}>
@@ -703,28 +741,31 @@ function UserMenu({ me, slug }: { me: Membership; slug: string }) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="내 메뉴"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
       >
-        <GearIcon />
+        <DotsIcon />
       </button>
 
-      {open && (
-        <div className="usermenu" role="menu">
-          <Link
-            className="usermenu__item"
-            role="menuitem"
-            href={`/w/${slug}/settings?tab=profile`}
-            onClick={() => setOpen(false)}
-          >
-            회원정보 수정
-          </Link>
-          <form action="/auth/signout" method="post">
-            <button className="usermenu__item usermenu__item--out" role="menuitem">
-              로그아웃
-            </button>
-          </form>
-        </div>
-      )}
+      {open &&
+        at &&
+        createPortal(
+          <div className="usermenu" role="menu" ref={menuRef} style={{ top: at.top, right: at.right }}>
+            <Link
+              className="usermenu__item"
+              role="menuitem"
+              href={`/w/${slug}/settings?tab=profile`}
+              onClick={() => setOpen(false)}
+            >
+              회원정보 수정
+            </Link>
+            <form action="/auth/signout" method="post">
+              <button className="usermenu__item usermenu__item--out" role="menuitem">
+                로그아웃
+              </button>
+            </form>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

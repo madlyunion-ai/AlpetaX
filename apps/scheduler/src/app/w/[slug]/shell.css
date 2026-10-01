@@ -2363,12 +2363,11 @@
   color: var(--ink);
 }
 
-/* 떠 있는 메뉴. 툴바가 overflow 를 자르므로 z-index 로 올린다. */
+/* 떠 있는 메뉴. body 로 내보내므로 좌표는 JS 가 잡아 준다 —
+   툴바 안에 두면 overflow 에 잘려 보이지 않는다. */
 .usermenu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 50;
+  position: fixed;
+  z-index: 70;
   min-width: 168px;
   padding: 4px;
   display: grid;

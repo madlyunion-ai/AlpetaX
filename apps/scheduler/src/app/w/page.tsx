@@ -56,9 +56,14 @@ export default async function WorkspacePicker() {
   // 워크스페이스가 하나뿐이면 고르는 화면을 보여줄 이유가 없다
   if (list.length === 1) redirect(`/w/${list[0].slug}`);
 
-  // 소속이 없다 — 아직 승인 전이거나, 승인이 거절된 경우다.
-  // 워크스페이스 만들기를 보여 주면 승인 절차를 우회하는 길로 읽힌다(서버는
-  // 막지만, 눌러 보고 거절당하는 경험 자체가 나쁘다).
+  /*
+   * 소속이 없다 — 신청한 팀의 승인을 기다리는 중이거나, 아직 신청하지
+   * 않았거나.
+   *
+   * 여기서도 제 팀을 만들 수 있다. 승인 절차가 막는 것은 '남의 팀에 들어오는
+   * 것' 이지 '제 팀을 꾸리는 것' 이 아니다. 기다리는 동안 아무것도 못 하게
+   * 둘 이유가 없다.
+   */
   if (list.length === 0) {
     return (
       <main style={{ display: 'grid', placeItems: 'center', minHeight: '100dvh', padding: '2rem' }}>
@@ -79,6 +84,16 @@ export default async function WorkspacePicker() {
             <Link className="btn btn--ghost" href="/request" style={{ fontSize: 13 }}>
               아직 신청하지 않았다면 — 승인 요청하기
             </Link>
+          </div>
+
+          <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--line-soft)' }}>
+            <p style={{ fontSize: 13, color: 'var(--ink-2)', margin: '0 0 10px' }}>
+              기다리는 대신 <b>직접 팀을 만들어</b> 시작하셔도 됩니다.
+            </p>
+            <NewWorkspaceForm />
+          </div>
+
+          <div style={{ display: 'grid', gap: 8, marginTop: 14 }}>
             <form action="/auth/signout" method="post">
               <button
                 className="btn btn--ghost"
@@ -131,8 +146,7 @@ export default async function WorkspacePicker() {
           ))}
         </div>
 
-        {/* 소유자만 더 만들 수 있다 — 서버에서도 같은 규칙으로 막는다 */}
-        {list.some((w) => w.role === 'owner') && <NewWorkspaceForm />}
+        <NewWorkspaceForm />
 
         <form action="/auth/signout" method="post">
           <button className="btn btn--ghost" style={{ fontSize: 12, color: 'var(--ink-3)' }}>
