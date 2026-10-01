@@ -2605,3 +2605,55 @@ button.wsbox__only:hover {
 img.rm__face {
   background: var(--sunken);
 }
+
+/* ── 다른 워크스페이스 참여 ─────────────────────────────────────── */
+.join__list {
+  max-height: 240px;
+  overflow-y: auto;
+  display: grid;
+  gap: 4px;
+  margin: 10px 0;
+  padding-right: 2px;
+}
+.join__item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.join__item:hover {
+  background: var(--sunken);
+}
+/* 고른 것을 또렷하게 — 아래 버튼의 문구와 짝이 맞아야 한다 */
+.join__item[data-on='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.join__item > .mono {
+  font-size: 11px;
+  flex: none;
+}
+.join__empty {
+  margin: 0;
+  padding: 18px 4px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+/* 모달 안에서는 세로로 쌓는다 */
+.wsnew__body > .input,
+.wsnew__body > .textarea {
+  width: 100%;
+}
+.wsnew__body > .textarea {
+  margin-bottom: 10px;
+}

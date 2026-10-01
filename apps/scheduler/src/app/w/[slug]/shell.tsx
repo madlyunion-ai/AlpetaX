@@ -34,6 +34,7 @@ import { DetailPanel } from './detail-panel';
 import { QuickAdd } from './quick-add';
 import { WelcomeModal } from './welcome-modal';
 import { NewWorkspaceForm } from '../new-workspace-form';
+import { JoinWorkspace } from './join-workspace';
 import './shell.css';
 
 /*
@@ -51,6 +52,8 @@ const SCALE_LABEL: Record<TimeScale, { roadmap: string; other: string }> = {
 
 /** 전환 상자에서 '만들기' 를 뜻하는 값. 주소로 쓰일 수 없는 모양이라 섞이지 않는다. */
 const NEW_WS = '__new__';
+/** 전환 상자에서 '다른 곳에 참여 요청' 을 뜻하는 값 */
+const JOIN_WS = '__join__';
 
 const VIEW_LABEL: Record<ViewKind, string> = {
   roadmap: '로드맵',
@@ -170,6 +173,7 @@ export function Shell(props: ShellProps) {
   const [quickPhase, setQuickPhase] = useState<string | null>(null);
   /* 새 워크스페이스 만들기 창 */
   const [wsNew, setWsNew] = useState(false);
+  const [wsJoin, setWsJoin] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -489,6 +493,7 @@ export function Shell(props: ShellProps) {
                   value={workspace.slug}
                   onChange={(e) => {
                     if (e.target.value === NEW_WS) return setWsNew(true);
+                    if (e.target.value === JOIN_WS) return setWsJoin(true);
                     router.push(`/w/${e.target.value}`);
                   }}
                 >
@@ -497,6 +502,7 @@ export function Shell(props: ShellProps) {
                       {w.name}
                     </option>
                   ))}
+                  <option value={JOIN_WS}>다른 워크스페이스 참여 요청…</option>
                   <option value={NEW_WS}>+ 새 워크스페이스…</option>
                 </select>
               ) : (
@@ -504,14 +510,20 @@ export function Shell(props: ShellProps) {
                  * 하나뿐이어도 만들 길은 있어야 한다. 목록이 없다고 해서
                  * 더 만들 수 없는 것은 아니다.
                  */
-                <button
-                  type="button"
-                  className="wsbox__only"
-                  title={`${workspace.name} — 눌러서 새 워크스페이스 만들기`}
-                  onClick={() => setWsNew(true)}
+                <select
+                  className="wsbox__pick"
+                  aria-label="워크스페이스"
+                  value={workspace.slug}
+                  onChange={(e) => {
+                    if (e.target.value === NEW_WS) return setWsNew(true);
+                    if (e.target.value === JOIN_WS) return setWsJoin(true);
+                    router.push(`/w/${e.target.value}`);
+                  }}
                 >
-                  {workspace.name}
-                </button>
+                  <option value={workspace.slug}>{workspace.name}</option>
+                  <option value={JOIN_WS}>다른 워크스페이스 참여 요청…</option>
+                  <option value={NEW_WS}>+ 새 워크스페이스…</option>
+                </select>
               )}
               <Link
                 className="wsbox__gear"
@@ -661,6 +673,15 @@ export function Shell(props: ShellProps) {
             setQuickSeed(null);
             setQuickOpen(true);
           }}
+        />
+      )}
+
+      {wsJoin && props.me && (
+        <JoinWorkspace
+          me={props.me}
+          joinedSlugs={props.myWorkspaces.map((w) => w.slug)}
+          onClose={() => setWsJoin(false)}
+          onToast={say}
         />
       )}
 
