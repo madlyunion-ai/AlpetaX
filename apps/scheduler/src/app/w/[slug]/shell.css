@@ -932,7 +932,7 @@
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
-  gap: 6px;
+  gap: 2px;
   padding: 0 24px 0 12px;
   overflow: hidden;
   z-index: 1;

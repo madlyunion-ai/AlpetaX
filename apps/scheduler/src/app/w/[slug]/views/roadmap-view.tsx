@@ -204,6 +204,20 @@ export function RoadmapView({
   /** 직전 범위. 새 범위가 오면 그 차이만큼 스크롤을 되밀어 화면을 붙잡는다. */
   const prevStart = useRef(range.start);
 
+  /*
+   * 보던 자리를 붙잡을 것인가, 옮길 것인가.
+   *
+   * 끝까지 밀어 넘길 때는 붙잡아야 한다 — 손가락이 가리키던 날짜가 그대로
+   * 있어야 이어서 미는 동작이 된다.
+   *
+   * 버튼을 누를 때는 반대다. 옮기려고 누른 것인데 붙잡아 버리면, 창만 옆으로
+   * 늘어나고 보이는 날짜는 그대로다. 스크롤 막대만 길어지는 것처럼 보인다.
+   *
+   * 기본은 '옮긴다'. 붙잡는 쪽이 예외이고, 그 예외는 끝까지 밀었을 때뿐이다.
+   * 반대로 두면 툴바의 ‹ › 까지 조용히 붙잡혀 같은 증상이 난다.
+   */
+  const keepView = useRef(false);
+
   /**
    * 헤더는 가로만, 좌측 트리는 세로만 본문 스크롤을 따라간다.
    * 스크롤바를 드러내는 data-scrolling 도 여기서 함께 세운다 — 같은 이벤트라
@@ -224,9 +238,11 @@ export function RoadmapView({
       const max = el.scrollWidth - el.clientWidth;
       if (el.scrollLeft <= EDGE) {
         shifting.current = true;
+        keepView.current = true;
         onReachEdge(-1);
       } else if (max > 0 && el.scrollLeft >= max - EDGE) {
         shifting.current = true;
+        keepView.current = true;
         onReachEdge(1);
       }
     }
@@ -380,7 +396,14 @@ export function RoadmapView({
 
     const shiftDays = differenceInCalendarDays(prevStart.current, range.start);
     prevStart.current = range.start;
-    if (!shiftDays) return;
+
+    // 이번 변경을 어떻게 다룰지 읽고 곧바로 기본값으로 되돌린다.
+    const keep = keepView.current;
+    keepView.current = false;
+
+    // 버튼으로 옮긴 경우. 스크롤을 그대로 두면 같은 자리가 새 기간의 다른
+    // 날짜를 가리키게 되고, 그것이 곧 '옮겨졌다' 는 뜻이다.
+    if (!keep || !shiftDays) return;
 
     const max = el.scrollWidth - el.clientWidth;
     const next = el.scrollLeft + shiftDays * (pxPerWeek / 7);
