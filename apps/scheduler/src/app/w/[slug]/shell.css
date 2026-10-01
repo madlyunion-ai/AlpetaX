@@ -2261,3 +2261,139 @@
   background: rgba(255, 255, 255, 0.16);
   color: #fff;
 }
+
+/* ── 워크스페이스 전환 ───────────────────────────────────────────
+   고르는 칸과 설정 버튼을 한 덩어리로 묶는다. 둘이 떨어져 있으면
+   어느 워크스페이스의 설정인지 한 번 더 생각해야 한다. */
+.wsbox {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+  max-width: 220px;
+}
+.wsbox__pick,
+.wsbox__only {
+  height: 100%;
+  min-width: 0;
+  padding: 0 8px 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 하나뿐일 때는 고를 것이 없으므로 글자만 둔다 */
+.wsbox__pick {
+  appearance: none;
+  cursor: pointer;
+  background-image: var(--select-arrow);
+  background-repeat: no-repeat;
+  background-position: right 7px center;
+  padding-right: 24px;
+}
+.wsbox__gear {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 100%;
+  flex: none;
+  border-left: 1px solid var(--line-soft);
+  color: var(--ink-2);
+}
+.wsbox__gear:hover {
+  background: var(--sunken);
+  color: var(--ink);
+}
+
+/* ── 사용자 칩 + 메뉴 ────────────────────────────────────────────── */
+.userbox {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 4px 0 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  max-width: 190px;
+}
+.userbox__avatar {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+.userbox__name {
+  font-size: 13px;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.userbox__gear {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.userbox__gear:hover {
+  background: var(--sunken);
+  color: var(--ink);
+}
+
+/* 떠 있는 메뉴. 툴바가 overflow 를 자르므로 z-index 로 올린다. */
+.usermenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  min-width: 168px;
+  padding: 4px;
+  display: grid;
+  gap: 2px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+.usermenu__item {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.usermenu__item:hover {
+  background: var(--sunken);
+}
+.usermenu__item--out {
+  color: var(--warn);
+}

@@ -57,8 +57,18 @@ const VIEW_LABEL: Record<ViewKind, string> = {
   workload: '담당자별',
 };
 
+/** 상단 전환 상자가 쓰는 최소 정보 */
+export interface WorkspaceRef {
+  id: string;
+  name: string;
+  slug: string;
+  role: string;
+}
+
 export interface ShellProps {
   workspace: Workspace;
+  /** 내가 속한 워크스페이스 전부 */
+  myWorkspaces: WorkspaceRef[];
   me: Membership | null;
   members: Membership[];
   teams: Team[];
@@ -446,19 +456,37 @@ export function Shell(props: ShellProps) {
               </button>
             )}
 
-            <Link
-              className="btn"
-              href={`/w/${workspace.slug}/settings`}
-              title="팀 · 업무구분 · 멤버 설정"
-            >
-              설정
-            </Link>
+            {/* 워크스페이스 — 고르면 옮겨 가고, 옆 버튼은 그 설정으로 */}
+            <div className="wsbox">
+              {props.myWorkspaces.length > 1 ? (
+                <select
+                  className="wsbox__pick"
+                  aria-label="워크스페이스"
+                  value={workspace.slug}
+                  onChange={(e) => router.push(`/w/${e.target.value}`)}
+                >
+                  {props.myWorkspaces.map((w) => (
+                    <option key={w.id} value={w.slug}>
+                      {w.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="wsbox__only" title={workspace.name}>
+                  {workspace.name}
+                </span>
+              )}
+              <Link
+                className="wsbox__gear"
+                href={`/w/${workspace.slug}/settings?tab=workspace`}
+                aria-label="워크스페이스 설정"
+                title="워크스페이스 설정"
+              >
+                <GearIcon />
+              </Link>
+            </div>
 
-            <form action="/auth/signout" method="post">
-              <button className="btn btn--ghost" title={props.me ? memberLabel(props.me) : ''}>
-                나가기
-              </button>
-            </form>
+            {props.me && <UserMenu me={props.me} slug={workspace.slug} />}
           </div>
         </div>
 
@@ -616,6 +644,85 @@ export function Shell(props: ShellProps) {
       {toast && (
         <div className="toast" role="status">
           {toast}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 톱니바퀴. 설정으로 가는 곳마다 같은 모양을 쓴다. */
+function GearIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M8 10.2a2.2 2.2 0 1 1 0-4.4 2.2 2.2 0 0 1 0 4.4zm0-1.3a.9.9 0 1 0 0-1.8.9.9 0 0 0 0 1.8z" />
+      <path d="M7.1 1.2h1.8l.2 1.4c.4.12.78.28 1.12.5l1.16-.84 1.28 1.28-.84 1.16c.22.34.38.72.5 1.12l1.4.2v1.8l-1.4.2c-.12.4-.28.78-.5 1.12l.84 1.16-1.28 1.28-1.16-.84c-.34.22-.72.38-1.12.5l-.2 1.4H7.1l-.2-1.4c-.4-.12-.78-.28-1.12-.5l-1.16.84L3.34 11.3l.84-1.16c-.22-.34-.38-.72-.5-1.12l-1.4-.2V7.02l1.4-.2c.12-.4.28-.78.5-1.12L3.34 4.54 4.62 3.26l1.16.84c.34-.22.72-.38 1.12-.5l.2-1.4z" opacity=".55" />
+    </svg>
+  );
+}
+
+/**
+ * 사용자 칩 + 설정 메뉴.
+ *
+ * 로그아웃을 메뉴 안에 넣은 이유 — 툴바에 그대로 두면 다른 버튼들과 같은
+ * 무게로 보인다. 자주 누를 일이 아니고, 잘못 누르면 하던 일이 끊긴다.
+ */
+function UserMenu({ me, slug }: { me: Membership; slug: string }) {
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  // 바깥을 누르거나 Esc 로 닫는다. 열어 둔 채 다른 곳을 만지면 가린다.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!boxRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const label = memberLabel(me);
+
+  return (
+    <div className="userbox" ref={boxRef}>
+      <span className="userbox__avatar" aria-hidden="true">
+        {label.slice(0, 1)}
+      </span>
+      <span className="userbox__name" title={label}>
+        {label}
+      </span>
+      <button
+        type="button"
+        className="userbox__gear"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="내 메뉴"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <GearIcon />
+      </button>
+
+      {open && (
+        <div className="usermenu" role="menu">
+          <Link
+            className="usermenu__item"
+            role="menuitem"
+            href={`/w/${slug}/settings?tab=profile`}
+            onClick={() => setOpen(false)}
+          >
+            회원정보 수정
+          </Link>
+          <form action="/auth/signout" method="post">
+            <button className="usermenu__item usermenu__item--out" role="menuitem">
+              로그아웃
+            </button>
+          </form>
         </div>
       )}
     </div>

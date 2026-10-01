@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useQuietScroll } from '@/lib/hooks/use-quiet-scroll';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
 import {
   ROLE_LABEL,
@@ -107,7 +107,14 @@ const TAB_LABEL: Record<Tab, string> = {
 
 export function SettingsClient(props: Props) {
   const { workspace, canManage } = props;
-  const [tab, setTab] = useState<Tab>('profile');
+  /*
+   * 어느 탭으로 열지 주소가 정할 수 있다 — ?tab=workspace
+   * 상단의 톱니바퀴들이 각자 제 탭으로 바로 보내기 위해서다.
+   */
+  const wanted = useSearchParams().get('tab');
+  const [tab, setTab] = useState<Tab>(
+    wanted && wanted in TAB_LABEL ? (wanted as Tab) : 'profile',
+  );
   const pendingCount = props.requests.filter((r) => r.status === 'pending').length;
   const [toast, setToast] = useState<string | null>(null);
   const [, startTx] = useTransition();

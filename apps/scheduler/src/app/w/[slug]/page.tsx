@@ -112,8 +112,14 @@ export default async function WorkspacePage({
    * '나'를 따로 묻지 않는 이유: 멤버 목록에 이미 들어 있다. 같은 표를 두 번
    * 읽는 대신 받아 온 배열에서 고른다.
    */
-  const [{ data: members }, { data: teams }, { data: phases }, { data: projects }, { data: milestones }] =
-    await Promise.all([
+  const [
+    { data: members },
+    { data: teams },
+    { data: phases },
+    { data: projects },
+    { data: milestones },
+    { data: myWs },
+  ] = await Promise.all([
     supabase
       .from('memberships')
       .select('id, workspace_id, user_id, role, display_name, email, display_as, avatar_url')
@@ -145,7 +151,18 @@ export default async function WorkspacePage({
       .eq('workspace_id', workspace.id)
       .order('due_on')
       .returns<Milestone[]>(),
-    ]);
+    // 내가 속한 워크스페이스 전부 — 상단에서 바로 옮겨 다니기 위해.
+    // 같은 묶음에 넣으므로 왕복이 늘지 않는다.
+    supabase
+      .from('memberships')
+      .select('role, workspaces(id, name, slug)')
+      .order('created_at'),
+  ]);
+
+  const myWorkspaces = (myWs ?? []).flatMap((m) => {
+    const w = m.workspaces as unknown as { id: string; name: string; slug: string } | null;
+    return w ? [{ ...w, role: m.role as string }] : [];
+  });
 
   // 목록에 이미 있는 것을 다시 묻지 않는다
   const me = (members ?? []).find((m) => m.user_id === user.id) ?? null;
@@ -191,6 +208,7 @@ export default async function WorkspacePage({
       phases={phases ?? []}
       projects={projects ?? []}
       schedules={allSchedules}
+      myWorkspaces={myWorkspaces}
       milestones={milestones ?? []}
       assignees={assignees ?? []}
       dependencies={deps ?? []}
