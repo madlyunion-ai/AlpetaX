@@ -11,7 +11,7 @@ import {
 } from './layout';
 import { dowIndex, holidayName, isRestDay, SATURDAY, SUNDAY, WEEK_STARTS_ON } from './holidays';
 import { milestoneStat, milestoneTiming } from './milestone';
-import { activeNow, isLate, peakConcurrency, workloadFor } from './workload';
+import { activeNow, isLate, pastWork, peakConcurrency, workloadFor } from './workload';
 import type { Schedule } from './types';
 
 const iso = (s: string) => new Date(s).toISOString();
@@ -526,6 +526,39 @@ describe('activeNow — 지금 진행 중인 일만', () => {
     );
     expect(got[0].daysLeft).toBe(0);
     expect(got[0].kind).toBe('running');
+  });
+});
+
+describe('pastWork — 이미 끝난 일', () => {
+  const now = new Date('2026-09-28T09:00:00');
+
+  it('완료와 취소를 모은다', () => {
+    const got = pastWork([
+        sched({ id: 'done', start_at: iso('2026-08-01'), end_at: iso('2026-08-10'), status: 'done' }),
+        sched({ id: 'cancel', start_at: iso('2026-08-01'), end_at: iso('2026-08-10'), status: 'cancelled' }),
+        sched({ id: 'now', start_at: iso('2026-09-20'), end_at: iso('2026-09-30'), status: 'active' }),
+      ]);
+    expect(got.map((s) => s.id).sort()).toEqual(['cancel', 'done']);
+  });
+
+  it('마감이 지났어도 안 끝났으면 넣지 않는다 — 그건 진행 중인 지연이다', () => {
+    const late = sched({ id: 'late', start_at: iso('2026-09-01'), end_at: iso('2026-09-10'), status: 'active' });
+    expect(pastWork([late])).toEqual([]);
+    expect(activeNow([late], now)[0].kind).toBe('late');
+  });
+
+  it('아직 시작 전인 일도 넣지 않는다', () => {
+    expect(
+      pastWork([sched({ id: 'soon', start_at: iso('2026-10-10'), end_at: iso('2026-10-20') })]),
+    ).toEqual([]);
+  });
+
+  it('최근에 끝난 것부터 나온다', () => {
+    const got = pastWork([
+        sched({ id: 'old', start_at: iso('2026-01-01'), end_at: iso('2026-01-10'), status: 'done' }),
+        sched({ id: 'new', start_at: iso('2026-08-01'), end_at: iso('2026-08-10'), status: 'done' }),
+      ]);
+    expect(got.map((s) => s.id)).toEqual(['new', 'old']);
   });
 });
 

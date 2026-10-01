@@ -2424,3 +2424,35 @@ button.wsbox__only {
 button.wsbox__only:hover {
   background: var(--sunken);
 }
+
+/* ── 이전 진행업무 ───────────────────────────────────────────────
+   기본은 접혀 있다. 이 화면은 지금 무엇을 하고 있나를 보는 곳이고,
+   지난 일까지 늘 펼쳐 두면 그 질문이 묻힌다. */
+.wl__pasttoggle {
+  justify-self: start;
+  margin-top: 2px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 12px;
+  cursor: pointer;
+}
+.wl__pasttoggle:hover {
+  background: var(--sunken);
+  color: var(--ink-2);
+}
+/* 지난 일은 한 단계 물러나 보인다 — 진행 중인 것과 섞이지 않게 */
+.wl__task--past {
+  background: transparent;
+  border-left-color: var(--line);
+  opacity: 0.72;
+}
+.wl__task--past:hover {
+  opacity: 1;
+}
+.wl__task--past .wl__taskdue {
+  color: var(--ink-3);
+  font-weight: 500;
+}

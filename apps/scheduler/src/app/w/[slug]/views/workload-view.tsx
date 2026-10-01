@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { laneCount, packLanes } from '@/lib/schedule-core/layout';
 import {
   activeNow,
+  pastWork,
   peakConcurrency,
   workloadFor,
   type ActiveTask,
@@ -41,6 +42,8 @@ interface Row {
   schedules: Schedule[];
   /** 지금 진행 중인 것만 — 이 화면의 본문이다 */
   active: ActiveTask[];
+  /** 끝났거나 접은 일. 펼쳐야 보인다 */
+  past: Schedule[];
   stat: WorkloadStat;
   peak: number;
   lanes: number;
@@ -95,6 +98,7 @@ export function WorkloadView({
       name,
       schedules: list,
       active: activeNow(list, now),
+      past: pastWork(list),
       stat: workloadFor(list, range, now),
       peak: peakConcurrency(list),
       lanes: Math.min(MAX_LANES, Math.max(1, laneCount(packLanes(list)))),
@@ -131,6 +135,18 @@ export function WorkloadView({
   };
   const todayPct = pct(new Date());
   const showToday = todayPct > 0 && todayPct < 100;
+
+  /*
+   * 이전 업무를 펼쳐 둔 사람. 기본은 접힘이다 — 이 화면은 "지금 누가 무엇을
+   * 하고 있나" 를 보는 곳이고, 지난 일까지 늘 펼쳐 두면 그 질문이 묻힌다.
+   */
+  const [openPast, setOpenPast] = useState<Set<string>>(new Set());
+  const togglePast = (id: string) =>
+    setOpenPast((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
 
   if (!members.length) {
     return (
@@ -266,6 +282,46 @@ export function WorkloadView({
                     </button>
                   );
                 })
+              )}
+
+              {r.past.length > 0 && (
+                <>
+                  <button
+                    className="wl__pasttoggle"
+                    aria-expanded={openPast.has(r.id)}
+                    onClick={() => togglePast(r.id)}
+                  >
+                    {openPast.has(r.id) ? '▾' : '▸'} 이전 진행업무 {r.past.length}건
+                  </button>
+
+                  {openPast.has(r.id) &&
+                    r.past.map((sc) => (
+                      <button
+                        key={sc.id}
+                        className="wl__task wl__task--past"
+                        data-sel={sc.id === selectedId}
+                        onClick={() => onSelect(sc.id)}
+                      >
+                        <span className="wl__taskdot" style={{ background: colorOf(sc) }} />
+                        <span className="wl__taskmain">
+                          <span className="wl__tasktitle">{sc.title}</span>
+                          {labelOf(sc) && <span className="wl__taskwhere">{labelOf(sc)}</span>}
+                        </span>
+                        <span className="wl__taskdate">
+                          {format(new Date(sc.start_at), 'M.d')} – {format(new Date(sc.end_at), 'M.d')}
+                        </span>
+                        <span className="wl__taskdue">
+                          {sc.status === 'cancelled' ? '취소' : '완료'}
+                        </span>
+                        <span className="wl__taskbar">
+                          <span className="wl__meter">
+                            <span style={{ width: `${sc.status === 'done' ? 100 : sc.progress}%` }} />
+                          </span>
+                          <span className="wl__pct">{sc.status === 'done' ? 100 : sc.progress}%</span>
+                        </span>
+                      </button>
+                    ))}
+                </>
               )}
             </div>
           </div>

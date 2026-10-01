@@ -59,7 +59,7 @@ const VIEW_LABEL: Record<ViewKind, string> = {
   day: '일',
   timeline: '타임라인',
   milestone: '마일스톤',
-  workload: '담당자별',
+  workload: '담당자별 업무현황',
 };
 
 /** 상단 전환 상자가 쓰는 최소 정보 */

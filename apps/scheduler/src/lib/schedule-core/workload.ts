@@ -134,6 +134,28 @@ export function activeNow(schedules: Schedule[], now = new Date()): ActiveTask[]
   );
 }
 
+/**
+ * 이미 끝난 일.
+ *
+ * activeNow 가 걸러 낸 나머지 중 '끝난 것' 만 모은다 — 아직 시작하지 않은
+ * 예정은 여기에도 들어가지 않는다. 지난 일을 돌아보는 목록이지 앞으로 할
+ * 일을 보는 목록이 아니다.
+ *
+ * 취소도 넣는다. 하기로 했다가 접은 것도 그 사람이 지나온 기록이다.
+ * 최근에 끝난 것부터 — 오래된 것일수록 덜 궁금하다.
+ */
+export function pastWork(schedules: Schedule[]): Schedule[] {
+  /*
+   * 날짜가 아니라 상태로 가른다.
+   * 마감이 지났는데 아직 끝내지 않은 일은 지난 일이 아니다 — 지금 처리해야
+   * 하는 일이고, activeNow 가 '늦은 일' 로 들고 있다. 날짜로 가르면 같은
+   * 일이 두 목록에 모두 나온다.
+   */
+  return schedules
+    .filter((s) => s.status === 'done' || s.status === 'cancelled')
+    .sort((a, b) => +new Date(b.end_at) - +new Date(a.end_at));
+}
+
 /** 겹치는 일정이 하루에 몇 건까지 쌓이는지 — 과부하 신호 */
 export function peakConcurrency(schedules: Schedule[]): number {
   const edges: { at: number; delta: number }[] = [];

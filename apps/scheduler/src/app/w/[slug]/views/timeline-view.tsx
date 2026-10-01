@@ -207,27 +207,40 @@ export function TimelineView({
     [milestones, range],
   );
 
-  /* ── 의존성 화살표 ─────────────────────────────────────────────── */
+  /* ── 연결선 ────────────────────────────────────────────────────────
+     두 가지를 그린다:
+       · 선행관계(schedule_dependencies) — "이 일이 끝나야 저 일이 시작된다"
+       · 상위 일정(parent_id)            — "저 일에 딸린 일이다"
+     둘은 뜻이 다르지만 화면에서는 모두 '이어져 있다' 로 읽힌다. 상위 일정만
+     걸어 두고 아무 선도 못 보면 연결이 안 된 것으로 오해하게 된다. */
   const arrows = useMemo(() => {
     const byId = new Map(schedules.map((s) => [s.id, s]));
-    const out: { d: string; key: string }[] = [];
-    for (const dep of dependencies) {
-      const a = byId.get(dep.predecessor_id);
-      const b = byId.get(dep.successor_id);
-      if (!a || !b) continue;
+    const out: { d: string; key: string; kind: 'dep' | 'parent' }[] = [];
+
+    /** 두 줄을 잇는 꺾은선. 세로로 먼저 내려가고 가로로 붙는다. */
+    const link = (a: Schedule, b: Schedule, kind: 'dep' | 'parent', key: string) => {
       const ay = rowIndex.get(a.id);
       const by = rowIndex.get(b.id);
-      if (ay === undefined || by === undefined) continue;
-
+      if (ay === undefined || by === undefined) return;
       const x1 = sc.x(a.end_at);
       const y1 = ay + ROW_H / 2;
       const x2 = sc.x(b.start_at);
       const y2 = by + ROW_H / 2;
       const mid = x1 + 10;
-      out.push({
-        key: `${dep.predecessor_id}-${dep.successor_id}`,
-        d: `M ${x1} ${y1} H ${mid} V ${y2} H ${x2}`,
-      });
+      out.push({ key, kind, d: `M ${x1} ${y1} H ${mid} V ${y2} H ${x2}` });
+    };
+
+    // 상위 일정 — 부모의 끝에서 자식의 시작으로
+    for (const s of schedules) {
+      if (!s.parent_id) continue;
+      const p = byId.get(s.parent_id);
+      if (p) link(p, s, 'parent', `p-${s.id}`);
+    }
+
+    for (const dep of dependencies) {
+      const a = byId.get(dep.predecessor_id);
+      const b = byId.get(dep.successor_id);
+      if (a && b) link(a, b, 'dep', `${dep.predecessor_id}-${dep.successor_id}`);
     }
     return out;
   }, [dependencies, schedules, rowIndex, sc]);
@@ -403,6 +416,7 @@ export function TimelineView({
                   <path d="M0,0 L6,3 L0,6 Z" fill="var(--ink-3)" />
                 </marker>
               </defs>
+              {/* 상위 일정은 점선, 선행관계는 실선 — 뜻이 다르므로 생김새도 다르게 */}
               {arrows.map((a) => (
                 <path
                   key={a.key}
@@ -410,6 +424,8 @@ export function TimelineView({
                   fill="none"
                   stroke="var(--ink-3)"
                   strokeWidth="1.2"
+                  strokeDasharray={a.kind === 'parent' ? '4 3' : undefined}
+                  opacity={a.kind === 'parent' ? 0.65 : 1}
                   markerEnd="url(#arw)"
                 />
               ))}
