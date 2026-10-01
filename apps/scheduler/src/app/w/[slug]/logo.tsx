@@ -1,5 +1,5 @@
 /**
- * TeamSync 로고.
+ * Syncteams 로고.
  *
  * <img> 로 걸지 않고 인라인으로 두는 이유: 워드마크 색을 토큰으로 바꿔야
  * 어두운 테마에서도 읽힌다. 파일로 두면 색을 손댈 방법이 filter 뿐이고,
@@ -20,7 +20,7 @@ export function TeamSyncLogo({
       style={style}
       viewBox="0 0 552 87"
       role="img"
-      aria-label="TeamSync"
+      aria-label="Syncteams"
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
