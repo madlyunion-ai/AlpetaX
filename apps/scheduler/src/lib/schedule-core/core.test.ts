@@ -5,6 +5,7 @@ import {
   barsForWeek,
   createScale,
   flattenTree,
+  groupByProject,
   laneCount,
   layoutDayColumn,
   packLanes,
@@ -526,6 +527,53 @@ describe('activeNow — 지금 진행 중인 일만', () => {
     );
     expect(got[0].daysLeft).toBe(0);
     expect(got[0].kind).toBe('running');
+  });
+});
+
+describe('groupByProject — 상위 일정 고르기용 묶음', () => {
+  const projects = [
+    { id: 'p1', name: '스마트 예약' },
+    { id: 'p2', name: '통합 운영' },
+  ];
+
+  it('넘겨받은 프로젝트 순서를 그대로 따른다', () => {
+    const got = groupByProject(
+      [
+        sched({ id: 'b', start_at: iso('2026-01-01'), end_at: iso('2026-01-02'), project_id: 'p2' }),
+        sched({ id: 'a', start_at: iso('2026-01-01'), end_at: iso('2026-01-02'), project_id: 'p1' }),
+      ],
+      projects,
+    );
+    expect(got.map((g) => g.name)).toEqual(['스마트 예약', '통합 운영']);
+  });
+
+  it('소속 없는 일정은 맨 뒤로 모은다', () => {
+    const got = groupByProject(
+      [
+        sched({ id: 'x', start_at: iso('2026-01-01'), end_at: iso('2026-01-02'), project_id: null }),
+        sched({ id: 'a', start_at: iso('2026-01-01'), end_at: iso('2026-01-02'), project_id: 'p1' }),
+      ],
+      projects,
+    );
+    expect(got.map((g) => g.name)).toEqual(['스마트 예약', '프로젝트 없음']);
+  });
+
+  it('빈 묶음은 돌려주지 않는다', () => {
+    const got = groupByProject(
+      [sched({ id: 'a', start_at: iso('2026-01-01'), end_at: iso('2026-01-02'), project_id: 'p1' })],
+      projects,
+    );
+    expect(got).toHaveLength(1);
+  });
+
+  it('넘긴 일정을 하나도 빠뜨리지 않는다', () => {
+    const list = [
+      sched({ id: 'a', start_at: iso('2026-01-01'), end_at: iso('2026-01-02'), project_id: 'p1' }),
+      sched({ id: 'b', start_at: iso('2026-01-01'), end_at: iso('2026-01-02'), project_id: 'p2' }),
+      sched({ id: 'c', start_at: iso('2026-01-01'), end_at: iso('2026-01-02'), project_id: null }),
+    ];
+    const got = groupByProject(list, projects);
+    expect(got.flatMap((g) => g.items)).toHaveLength(list.length);
   });
 });
 

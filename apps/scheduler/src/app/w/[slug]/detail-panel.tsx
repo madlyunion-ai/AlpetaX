@@ -17,6 +17,7 @@ import {
   type Team,
   type Workspace,
 } from '@/lib/schedule-core/types';
+import { groupByProject } from '@/lib/schedule-core/layout';
 import { inferHorizon } from '@/lib/schedule-core/horizon';
 import {
   addComment,
@@ -435,13 +436,20 @@ export function DetailPanel(props: Props) {
             onChange={(e) => set('parentId', e.target.value)}
           >
             <option value="">없음</option>
-            {props.allSchedules
-              .filter((x) => x.id !== s.id && x.parent_id !== s.id)
-              .map((x) => (
-                <option key={x.id} value={x.id}>
-                  {x.title}
-                </option>
-              ))}
+            {/* 프로젝트별로 갈라 둔다 — 평평한 목록에서는 비슷한 제목 중
+                어느 프로젝트 것인지 고르기 전에 알 수 없다 */}
+            {groupByProject(
+              props.allSchedules.filter((x) => x.id !== s.id && x.parent_id !== s.id),
+              props.projects,
+            ).map((g) => (
+              <optgroup key={g.name} label={g.name}>
+                {g.items.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.title}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
           </select>
         </div>
 

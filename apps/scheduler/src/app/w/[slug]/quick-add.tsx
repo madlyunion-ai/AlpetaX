@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useMemo, useState, useTransition } from 'react';
 import { format } from 'date-fns';
+import { groupByProject } from '@/lib/schedule-core/layout';
 import { inferHorizon } from '@/lib/schedule-core/horizon';
 import {
   HORIZON_LABEL,
@@ -358,10 +359,14 @@ export function QuickAdd({
                 onChange={(e) => setParentId(e.target.value)}
               >
                 <option value="">없음</option>
-                {schedules.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.title}
-                  </option>
+                {groupByProject(schedules, projects).map((g) => (
+                  <optgroup key={g.name} label={g.name}>
+                    {g.items.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.title}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </div>

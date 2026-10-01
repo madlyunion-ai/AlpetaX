@@ -273,3 +273,42 @@ export function flattenTree(schedules: Schedule[], collapsed: Set<string>): Tree
   walk(null, 0);
   return rows;
 }
+
+/** 선택 상자에 넣을 묶음 하나 */
+export interface ProjectGroup {
+  name: string;
+  items: Schedule[];
+}
+
+/**
+ * 일정을 프로젝트별로 묶는다 — 상위 일정을 고를 때 쓴다.
+ *
+ * 목록이 평평하면 이름이 비슷한 일정 중 어느 프로젝트 것인지 알 수 없다.
+ * 프로젝트 이름 아래로 갈라 두면 고르기 전에 소속이 보인다.
+ *
+ * 프로젝트 순서는 넘겨받은 순서를 그대로 따른다 — 사이드바·로드맵과 같은
+ * 순서여야 눈이 익은 자리에서 찾을 수 있다. 소속 없는 일정은 맨 뒤로 모은다.
+ * 빈 묶음은 돌려주지 않는다. 고를 것이 없는 제목만 남으면 방해만 된다.
+ */
+export function groupByProject(
+  schedules: Schedule[],
+  projects: { id: string; name: string }[],
+  noneLabel = '프로젝트 없음',
+): ProjectGroup[] {
+  const byProject = new Map<string, Schedule[]>();
+  for (const s of schedules) {
+    const key = s.project_id ?? '';
+    const list = byProject.get(key) ?? [];
+    list.push(s);
+    byProject.set(key, list);
+  }
+
+  const out: ProjectGroup[] = [];
+  for (const p of projects) {
+    const items = byProject.get(p.id);
+    if (items?.length) out.push({ name: p.name, items });
+  }
+  const orphans = byProject.get('');
+  if (orphans?.length) out.push({ name: noneLabel, items: orphans });
+  return out;
+}
