@@ -562,3 +562,50 @@ a {
   height: 1px;
   background: var(--line);
 }
+
+/* ── 워크스페이스 찾아 고르기 ─────────────────────────────────────
+   승인 요청 화면(/request)과 로그인 뒤의 참여 요청 창이 함께 쓴다.
+   shell.css 가 아니라 여기 두는 이유 — /request 는 셸 바깥이라 그 파일을
+   읽지 않는다. 거기 두면 그 화면에서만 스타일이 빠진다. */
+.join__list {
+  max-height: 240px;
+  overflow-y: auto;
+  display: grid;
+  gap: 4px;
+  margin: 10px 0;
+  padding-right: 2px;
+}
+.join__item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.join__item:hover {
+  background: var(--sunken);
+}
+/* 고른 것을 또렷하게 — 아래 버튼의 문구와 짝이 맞아야 한다 */
+.join__item[data-on='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.join__item > .mono {
+  font-size: 11px;
+  flex: none;
+}
+.join__empty {
+  margin: 0;
+  padding: 18px 4px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-3);
+}

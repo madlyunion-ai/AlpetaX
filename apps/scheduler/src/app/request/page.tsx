@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { TeamSyncLogo } from '@/app/w/[slug]/logo';
+import { WorkspaceSearch, type Ws } from '@/components/workspace-search';
 
 /**
  * 승인 요청 — 로그인 전에 받는다.
@@ -16,12 +17,6 @@ import { TeamSyncLogo } from '@/app/w/[slug]/logo';
  * 이메일 소유 확인은 그 첫 로그인이 대신한다 — 남의 주소로 신청할 수는 있어도
  * 매직링크는 그 주소로만 가므로 실제로 들어오지는 못한다.
  */
-interface Ws {
-  id: string;
-  name: string;
-  slug: string;
-}
-
 export default function RequestPage() {
   return (
     <Suspense fallback={null}>
@@ -40,7 +35,8 @@ function RequestForm() {
   const fixed = params.get('ws');
 
   const [list, setList] = useState<Ws[] | null>(null);
-  const [slug, setSlug] = useState(fixed ?? '');
+  /* 고른 워크스페이스. 링크로 지정된 경우(?ws=) 목록이 오면 거기서 찾아 채운다. */
+  const [picked, setPicked] = useState<Ws | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
@@ -59,13 +55,18 @@ function RequestForm() {
         if (!alive) return;
         const rows = (data ?? []) as Ws[];
         setList(rows);
-        // 하나뿐이면 고를 것이 없다
-        setSlug((cur) => cur || (rows.length === 1 ? rows[0].slug : ''));
+        /*
+         * 고를 것이 하나뿐이거나 링크로 지정됐으면 미리 골라 둔다 —
+         * 선택지가 없는 선택을 시키지 않는다.
+         */
+        const only = rows.length === 1 ? rows[0] : null;
+        const byLink = fixed ? (rows.find((w) => w.slug === fixed) ?? null) : null;
+        setPicked(byLink ?? only);
       });
     return () => {
       alive = false;
     };
-  }, []);
+  }, [fixed]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -77,7 +78,7 @@ function RequestForm() {
       req_email: email.trim(),
       req_name: name.trim(),
       req_note: note.trim() || null,
-      ws_slug: slug || null,
+      ws_slug: picked?.slug ?? null,
     });
 
     if (error) {
@@ -99,7 +100,7 @@ function RequestForm() {
               요청이 접수되었습니다
             </h1>
             <p style={{ color: 'var(--ink-2)', margin: '0 0 1.5rem', fontSize: 13, lineHeight: 1.7 }}>
-              {list?.find((w) => w.slug === slug)?.name ?? '관리자'} 쪽에서 승인하면{' '}
+              {picked?.name ?? '관리자'} 쪽에서 승인하면{' '}
               <b>{email}</b> 로 로그인하실 수 있습니다.
               <br />
               승인 여부는 따로 알려 드리지 않으니, 잠시 뒤 로그인을 시도해 보세요.
@@ -116,26 +117,13 @@ function RequestForm() {
             </p>
 
             <form onSubmit={submit} style={{ display: 'grid', gap: 12 }}>
-              {/* 어느 워크스페이스로 갈지 먼저 정한다 — 이름을 적기 전에 */}
-              {!fixed && list && list.length > 1 && (
-                <label style={{ display: 'grid', gap: 5 }}>
+              {/* 어느 워크스페이스로 갈지 먼저 정한다 — 이름을 적기 전에.
+                  수가 늘어도 이름 일부만 치면 좁혀진다. */}
+              {!fixed && (list === null || list.length > 1) && (
+                <div style={{ display: 'grid', gap: 5 }}>
                   <span className="mono">참여할 워크스페이스</span>
-                  <select
-                    className="select"
-                    value={slug}
-                    onChange={(e) => setSlug(e.target.value)}
-                    required
-                  >
-                    <option value="" disabled>
-                      고르세요
-                    </option>
-                    {list.map((w) => (
-                      <option key={w.id} value={w.slug}>
-                        {w.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                  <WorkspaceSearch list={list} picked={picked} onPick={setPicked} />
+                </div>
               )}
 
               <label style={{ display: 'grid', gap: 5 }}>
@@ -181,8 +169,12 @@ function RequestForm() {
                 </p>
               )}
 
-              <button className="btn btn--primary" disabled={state === 'sending'}>
-                {state === 'sending' ? '보내는 중…' : '승인 요청하기'}
+              <button className="btn btn--primary" disabled={state === 'sending' || !picked}>
+                {state === 'sending'
+                  ? '보내는 중…'
+                  : picked
+                    ? `${picked.name} 에 승인 요청`
+                    : '워크스페이스를 고르세요'}
               </button>
             </form>
 

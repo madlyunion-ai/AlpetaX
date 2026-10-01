@@ -1,14 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { memberLabel, type Membership } from '@/lib/schedule-core/types';
-
-interface Ws {
-  id: string;
-  name: string;
-  slug: string;
-}
+import { WorkspaceSearch, type Ws } from '@/components/workspace-search';
 
 interface Props {
   me: Membership;
@@ -27,7 +22,6 @@ interface Props {
  */
 export function JoinWorkspace({ me, joinedSlugs, onClose, onToast }: Props) {
   const [list, setList] = useState<Ws[] | null>(null);
-  const [q, setQ] = useState('');
   const [note, setNote] = useState('');
   const [picked, setPicked] = useState<Ws | null>(null);
   const [sending, setSending] = useState(false);
@@ -44,15 +38,6 @@ export function JoinWorkspace({ me, joinedSlugs, onClose, onToast }: Props) {
       alive = false;
     };
   }, []);
-
-  /* 이미 속한 곳은 뺀다. 요청해 봐야 할 일이 없다. */
-  const candidates = useMemo(() => {
-    const joined = new Set(joinedSlugs);
-    const needle = q.trim().toLowerCase();
-    return (list ?? [])
-      .filter((w) => !joined.has(w.slug))
-      .filter((w) => !needle || w.name.toLowerCase().includes(needle) || w.slug.includes(needle));
-  }, [list, joinedSlugs, q]);
 
   async function send() {
     if (!picked) return;
@@ -94,38 +79,13 @@ export function JoinWorkspace({ me, joinedSlugs, onClose, onToast }: Props) {
             </>
           ) : (
             <>
-              <input
-                className="input"
+              <WorkspaceSearch
+                list={list}
+                exclude={joinedSlugs}
+                picked={picked}
+                onPick={setPicked}
                 autoFocus
-                placeholder="워크스페이스 이름으로 찾기"
-                value={q}
-                onChange={(e) => {
-                  setQ(e.target.value);
-                  setPicked(null);
-                }}
               />
-
-              <div className="join__list quiet-scroll">
-                {list === null ? (
-                  <p className="join__empty">불러오는 중…</p>
-                ) : candidates.length === 0 ? (
-                  <p className="join__empty">
-                    {q.trim() ? '찾는 이름이 없습니다.' : '참여할 수 있는 곳이 더 없습니다.'}
-                  </p>
-                ) : (
-                  candidates.map((w) => (
-                    <button
-                      key={w.id}
-                      className="join__item"
-                      data-on={picked?.id === w.id}
-                      onClick={() => setPicked(w)}
-                    >
-                      <b>{w.name}</b>
-                      <span className="mono">/w/{w.slug}</span>
-                    </button>
-                  ))
-                )}
-              </div>
 
               {picked && (
                 <textarea
