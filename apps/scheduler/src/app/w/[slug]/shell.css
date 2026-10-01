@@ -1060,7 +1060,11 @@
   border: 1px solid var(--bar-outline);
   border-radius: 8px;
   padding: 0;
-  overflow: hidden;
+  /*
+   * 자르지 않는다. 자르면 막대 위로 걸쳐 둔 담당자 얼굴의 윗부분이 함께
+   * 잘려 나간다. 둥근 모서리와 글자 넘침은 안쪽 요소가 각자 처리한다.
+   */
+  overflow: visible;
   cursor: pointer;
   color: #fff;
   font-size: 12px;
@@ -1098,6 +1102,12 @@
   position: absolute;
   inset: 0 auto 0 0;
   background: rgba(255, 255, 255, 0.22);
+  /*
+   * 막대가 더는 자르지 않으므로 제 모서리를 스스로 둥글린다.
+   * 네 귀를 모두 둥글리는 이유 — 왼쪽만 둥글리면 진행률 100% 일 때
+   * 오른쪽이 각진 채로 막대의 둥근 모서리 밖으로 삐져나온다.
+   */
+  border-radius: 7px;
 }
 .rm__barlabel {
   position: relative;
@@ -2537,7 +2547,9 @@ button.wsbox__only:hover {
 .rm__who {
   position: absolute;
   top: -7px;
-  left: -5px;
+  /* 좌우 끝의 기간 조절 손잡이를 비켜선다 — 겹치면 얼굴을 잡으려다
+     기간이 늘어난다 */
+  left: 15px;
   z-index: 5;
   display: flex;
   /* 노션처럼 서로 파고들게. 왼쪽 것이 위로 오도록 뒤에서부터 쌓는다. */
