@@ -93,6 +93,9 @@ begin
   return new;
 end $$;
 
+-- 트리거 전용. API 로 직접 부를 이유가 없다.
+revoke execute on function share_links_check() from public, anon, authenticated;
+
 drop trigger if exists share_links_check on share_links;
 create trigger share_links_check before insert or update on share_links
   for each row execute function share_links_check();
@@ -159,20 +162,23 @@ begin
   on conflict (link_id) do update set password_hash = excluded.password_hash;
 end $$;
 
-revoke execute on function set_share_password(uuid, text) from anon;
+-- Supabase 는 함수에 public·anon 실행 권한을 기본으로 준다. anon 에게서만 빼면 public 을 통해 남는다.
+revoke execute on function set_share_password(uuid, text) from public, anon;
+grant execute on function set_share_password(uuid, text) to authenticated;
 
 -- ── 주소 재발급 — 새 주소를 만들고 이전 주소는 그 자리에서 막는다 ────
 -- security invoker: 위의 update 정책을 그대로 탄다.
 create or replace function regenerate_share_token(link uuid)
 returns text
-language sql volatile as $$
+language sql volatile set search_path = public as $$
   update share_links
      set token = new_share_token(), view_count = 0, last_viewed_at = null
    where id = link
   returning token
 $$;
 
-revoke execute on function regenerate_share_token(uuid) from anon;
+revoke execute on function regenerate_share_token(uuid) from public, anon;
+grant execute on function regenerate_share_token(uuid) to authenticated;
 
 -- ── 바깥에서 여는 유일한 길 ───────────────────────────────────────────
 --
