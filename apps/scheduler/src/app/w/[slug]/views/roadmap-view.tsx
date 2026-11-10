@@ -147,6 +147,11 @@ interface Props {
   canEdit: boolean;
   workspaceSlug: string;
   onToast: (msg: string) => void;
+  /**
+   * 외부 공유 화면. 편집은 canEdit 로 이미 막히지만, 프로젝트 설정 단추와
+   * '일정 추가' 안내처럼 워크스페이스 안에서만 뜻이 있는 것까지 감춘다.
+   */
+  readOnly?: boolean;
 }
 
 interface Band {
@@ -186,6 +191,7 @@ export function RoadmapView({
   canEdit,
   workspaceSlug,
   onToast,
+  readOnly = false,
 }: Props) {
   const pxPerWeek = PX_PER_WEEK[scale];
   const sc = useMemo(() => createScale(range.start, range.end, pxPerWeek / 7), [range, pxPerWeek]);
@@ -551,7 +557,9 @@ export function RoadmapView({
     return (
       <div className="empty">
         <b>이 기간에 일정이 없습니다.</b>
-        <span style={{ fontSize: 12 }}>‘+ 일정’ 으로 추가하거나 기간을 옮겨 보세요.</span>
+        {!readOnly && (
+          <span style={{ fontSize: 12 }}>‘+ 일정’ 으로 추가하거나 기간을 옮겨 보세요.</span>
+        )}
       </div>
     );
   }
@@ -629,7 +637,7 @@ export function RoadmapView({
                       + 일정 추가
                     </button>
                   )}
-                  {b.projectId && (
+                  {b.projectId && !readOnly && (
                     <button
                       className="rm__gear"
                       aria-haspopup="dialog"

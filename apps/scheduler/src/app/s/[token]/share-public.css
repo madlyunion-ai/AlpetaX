@@ -182,3 +182,90 @@
     gap: 6px;
   }
 }
+
+/* ── 로드맵 보기 ──────────────────────────────────────────────────
+   앱의 로드맵(.rm)을 그대로 쓴다. 이 페이지가 주는 것은 높이 하나 —
+   .rm 은 부모 높이를 다 채우고 안에서 가로·세로로 스크롤한다. */
+.pub--wide {
+  height: 100dvh;
+  min-height: 0;
+}
+.pub__wide {
+  height: 100%;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 12px;
+  padding: 16px 20px 12px;
+}
+.pub__wtop {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.pub__wtitle .pub__title {
+  font-size: 18px;
+  margin: 0;
+}
+.pub__rm {
+  position: relative;
+  min-height: 360px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.pub__switch {
+  display: inline-flex;
+  padding: 2px;
+  background: var(--sunken);
+  border-radius: 8px;
+}
+.pub__switch button {
+  border: 0;
+  background: transparent;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.pub__switch button[data-on='true'] {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  cursor: default;
+}
+/* 막대를 누르면 뜨는 정보 카드 — 로드맵을 가리지 않게 오른쪽 아래 */
+.pub__pick {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 5;
+  width: min(340px, calc(100% - 28px));
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.35);
+  padding: 12px 14px 14px;
+}
+.pub__pickhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pub__pickhead b {
+  flex: 1;
+  font-size: 15px;
+}
+.pub__dl--tight {
+  margin-top: 8px;
+  grid-template-columns: 64px 1fr;
+  gap: 8px 12px;
+  font-size: 13px;
+}
+.pub__foot--wide {
+  margin: 0;
+}

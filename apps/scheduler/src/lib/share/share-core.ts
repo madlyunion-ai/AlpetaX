@@ -5,7 +5,7 @@
  * 내보낸다. 한쪽만 고치면 받는 사람이 보는 것과 캘린더에 들어가는 것이
  * 서로 달라진다.
  */
-import { STATUS_LABEL, type SchedStatus } from '../schedule-core/types';
+import { STATUS_LABEL, type Horizon, type SchedStatus, type TimeScale } from '../schedule-core/types';
 
 export type ShareKind = 'schedule' | 'view';
 export type ShareScope = 'anyone' | 'password';
@@ -51,6 +51,8 @@ export interface ShareFilter {
   team_ids: string[] | null;
   phase_ids: string[] | null;
   assignee_ids: string[] | null;
+  /** 공유할 때의 축척. 받는 쪽 로드맵이 같은 촘촘함으로 열린다. */
+  scale?: TimeScale;
 }
 
 /** share_links 한 줄 — 비밀번호 해시는 별도 표라 여기에 없다. */
@@ -78,6 +80,11 @@ export const SHARE_COLUMNS =
 export interface ShareItem {
   id: string;
   title: string;
+  /** 로드맵 줄을 정하는 열쇠 — 이름·색은 OpenShareResult.projects / phases 에 */
+  project_id?: string;
+  phase_id?: string;
+  horizon?: Horizon;
+  sort_order?: number;
   start_at: string;
   end_at: string;
   all_day: boolean;
@@ -111,8 +118,12 @@ export interface OpenShareResult {
     scope: ShareScope;
     from: string | null;
     to: string | null;
+    scale: TimeScale | null;
   };
   items?: ShareItem[];
+  projects?: { id: string; name: string; color: string }[];
+  phases?: { id: string; name: string; color: string; sort_order: number }[];
+  milestones?: { id: string; project_id: string; title: string; due_on: string; status: 'upcoming' | 'reached' | 'missed' }[];
 }
 
 export const isExpired = (l: Pick<ShareLink, 'expires_at'>, now = new Date()) =>

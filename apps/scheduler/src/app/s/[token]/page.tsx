@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 import type { OpenShareResult } from '@/lib/share/share-core';
 import { PublicShare } from './public-share';
+// 로드맵 보기는 앱의 로드맵 컴포넌트를 쓰므로 그 스타일(.rm)도 함께 싣는다
+import '../../w/[slug]/shell.css';
 import './share-public.css';
 
 export const dynamic = 'force-dynamic';
