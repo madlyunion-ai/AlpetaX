@@ -33,6 +33,7 @@ import { WorkloadView } from './views/workload-view';
 import { DetailPanel } from './detail-panel';
 import { QuickAdd } from './quick-add';
 import { WelcomeModal } from './welcome-modal';
+import { ShareDialog, type ShareDialogTarget } from './share-dialog';
 import { NewWorkspaceForm } from '../new-workspace-form';
 import { JoinWorkspace } from './join-workspace';
 import './shell.css';
@@ -174,6 +175,9 @@ export function Shell(props: ShellProps) {
   /* 새 워크스페이스 만들기 창 */
   const [wsNew, setWsNew] = useState(false);
   const [wsJoin, setWsJoin] = useState(false);
+  /* 외부 공유 창. 대상은 여는 순간 고정한다 — 창이 떠 있는 동안 필터를 바꿔도
+     공유할 조건이 따라 바뀌지 않게. */
+  const [shareTarget, setShareTarget] = useState<ShareDialogTarget | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -314,12 +318,13 @@ export function Shell(props: ShellProps) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== 'Escape') return;
-      if (quickOpen) setQuickOpen(false);
+      if (shareTarget) setShareTarget(null);
+      else if (quickOpen) setQuickOpen(false);
       else if (ui.sel) select(null);
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [quickOpen, ui.sel, select]);
+  }, [shareTarget, quickOpen, ui.sel, select]);
 
   const teamById = useMemo(() => new Map(props.teams.map((t) => [t.id, t])), [props.teams]);
 
@@ -373,6 +378,27 @@ export function Shell(props: ShellProps) {
   }, [props.schedules]);
 
   const canEdit = props.me?.role !== 'guest';
+
+  /** 지금 보는 화면을 그대로 — 기간과 사이드바 필터가 링크의 조건이 된다 */
+  const openViewShare = () => {
+    const names = filters.projectIds
+      ? props.projects.filter((p) => filters.projectIds!.includes(p.id)).map((p) => p.name)
+      : [];
+    const who = names.length > 0 && names.length <= 2 ? names.join(' · ') : '전체 프로젝트';
+    setShareTarget({
+      kind: 'view',
+      title: `${who} ${VIEW_LABEL[view]} · ${rangeLabel}`,
+      filter: {
+        from: range.start.toISOString(),
+        to: range.end.toISOString(),
+        project_ids: filters.projectIds,
+        team_ids: filters.teamIds,
+        phase_ids: filters.phaseIds,
+        assignee_ids: filters.assigneeIds,
+      },
+      schedules: [...inRange].sort((a, b) => a.start_at.localeCompare(b.start_at)),
+    });
+  };
 
   return (
     <div className="shell">
@@ -470,6 +496,13 @@ export function Shell(props: ShellProps) {
                   +
                 </button>
               </div>
+            )}
+
+            {/* 게스트는 공유하지 않는다 — 자신에게 보이는 범위 밖으로 내보낼 길이 생긴다 */}
+            {canEdit && (
+              <button className="btn" title="지금 보는 화면의 일정을 외부에 공유" onClick={openViewShare}>
+                공유
+              </button>
             )}
 
             {canEdit && (
@@ -660,6 +693,20 @@ export function Shell(props: ShellProps) {
           assigneeIds={assigneesBySchedule.get(selected.id) ?? []}
           canEdit={canEdit}
           onClose={() => select(null)}
+          onToast={say}
+          onShare={canEdit ? () => setShareTarget({ kind: 'schedule', schedule: selected }) : undefined}
+        />
+      )}
+
+      {shareTarget && (
+        <ShareDialog
+          workspace={workspace}
+          target={shareTarget}
+          projects={props.projects}
+          teams={props.teams}
+          members={props.members}
+          assigneeMap={assigneesBySchedule}
+          onClose={() => setShareTarget(null)}
           onToast={say}
         />
       )}

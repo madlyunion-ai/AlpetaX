@@ -1,7 +1,8 @@
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { Membership, Phase, Project, Team, Workspace } from '@/lib/schedule-core/types';
-import { SettingsClient, type AccessRequest, type Invitation } from './settings-client';
+import { SHARE_COLUMNS, type ShareLink } from '@/lib/share/share-core';
+import { SettingsClient, type AccessRequest, type Invitation, type ShareRow } from './settings-client';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,8 +78,30 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
         .returns<AccessRequest[]>()
     : { data: [] as AccessRequest[] };
 
+  /*
+   * 외부 공유는 따로 읽는다. 0011 마이그레이션 전이면 표가 없어 오류가 나는데,
+   * 그 오류가 설정 화면 전체를 막으면 안 된다 — 이 탭만 안내를 띄운다.
+   * 게스트는 공유 링크를 볼 수 없다(RLS).
+   */
+  const [sharesQ, flagQ] = me && me.role !== 'guest'
+    ? await Promise.all([
+        supabase
+          .from('share_links')
+          .select(`${SHARE_COLUMNS}, schedules(title)`)
+          .eq('workspace_id', workspace.id)
+          .order('created_at', { ascending: false }),
+        supabase.from('workspaces').select('allow_external_share').eq('id', workspace.id).maybeSingle(),
+      ])
+    : [{ data: [], error: null }, { data: null, error: null }];
+  const shares: ShareRow[] = ((sharesQ.data ?? []) as unknown as (ShareLink & { schedules: { title: string } | null })[]).map(
+    ({ schedules, ...l }) => ({ ...l, schedule_title: schedules?.title ?? null }),
+  );
+
   return (
     <SettingsClient
+      shares={shares}
+      sharesReady={!sharesQ.error && !flagQ.error}
+      allowExternalShare={(flagQ.data as { allow_external_share?: boolean } | null)?.allow_external_share !== false}
       workspace={workspace}
       me={me}
       canManage={canManage}

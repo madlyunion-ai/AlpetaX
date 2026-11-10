@@ -17,6 +17,8 @@ import {
   type Workspace,
 } from '@/lib/schedule-core/types';
 import { inviteMember } from '../../../actions';
+import { deleteShareLink, revokeShareLink, setExternalShare } from '../../../share-actions';
+import { SCOPE_LABEL, fmtDate, isActive, isExpired, shareUrl, type ShareLink } from '@/lib/share/share-core';
 import {
   approveRequest,
   archiveProject,
@@ -52,6 +54,11 @@ export interface AccessRequest {
   decided_note: string | null;
 }
 
+/** 설정 목록용 — 일정 공유면 일정 제목을 함께 싣는다 */
+export interface ShareRow extends ShareLink {
+  schedule_title: string | null;
+}
+
 export interface Invitation {
   id: string;
   email: string;
@@ -72,6 +79,10 @@ interface Props {
   projects: Project[];
   invitations: Invitation[];
   requests: AccessRequest[];
+  shares: ShareRow[];
+  /** 0011 마이그레이션이 적용됐는가 */
+  sharesReady: boolean;
+  allowExternalShare: boolean;
 }
 
 /** 새로 만들 때 돌아가며 집어 주는 색. 매번 같은 파랑이 나오지 않게 한다. */
@@ -94,7 +105,7 @@ const PALETTE = [
   '#7B8698',
 ];
 
-type Tab = 'profile' | 'workspace' | 'phases' | 'teams' | 'projects' | 'members' | 'requests';
+type Tab = 'profile' | 'workspace' | 'phases' | 'teams' | 'projects' | 'members' | 'requests' | 'shares';
 
 const TAB_LABEL: Record<Tab, string> = {
   profile: '내 정보',
@@ -104,6 +115,7 @@ const TAB_LABEL: Record<Tab, string> = {
   projects: '프로젝트',
   members: '멤버',
   requests: '승인요청',
+  shares: '외부 공유',
 };
 
 export function SettingsClient(props: Props) {
@@ -167,6 +179,7 @@ export function SettingsClient(props: Props) {
           {tab === 'projects' && <ProjectSection {...props} run={run} />}
           {tab === 'members' && <MemberSection {...props} run={run} say={say} />}
           {tab === 'requests' && <RequestSection {...props} run={run} />}
+          {tab === 'shares' && <ShareSection {...props} run={run} say={say} />}
         </main>
       </div>
 
@@ -1080,6 +1093,146 @@ function WorkspaceSection({
       )}
 
       {!canManage && <p className="set__empty">관리자만 수정할 수 있습니다.</p>}
+    </section>
+  );
+}
+
+/* ── 외부 공유 ─────────────────────────────────────────────────────── */
+
+function ShareSection({
+  workspace,
+  me,
+  members,
+  canManage,
+  shares,
+  sharesReady,
+  allowExternalShare,
+  run,
+  say,
+}: Props & { run: RunFn; say: (m: string) => void }) {
+  const origin = typeof window === 'undefined' ? '' : window.location.origin;
+  const live = shares.filter((l) => isActive(l));
+  const ended = shares.filter((l) => !isActive(l));
+  const byUser = (uid: string) => {
+    const m = members.find((x) => x.user_id === uid);
+    return m ? memberLabel(m) : '알 수 없음';
+  };
+  // 고치고 지우는 것은 만든 사람 또는 관리자 — DB 정책과 같은 규칙
+  const mine = (l: ShareRow) => canManage || l.created_by === me?.user_id;
+
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      say('링크를 복사했습니다.');
+    } catch {
+      say('복사하지 못했습니다.');
+    }
+  };
+
+  const row = (l: ShareRow) => {
+    const active = isActive(l);
+    const status = l.revoked_at
+      ? '중지됨'
+      : isExpired(l)
+        ? `${fmtDate(l.expires_at!)} 만료됨`
+        : l.expires_at
+          ? `${fmtDate(l.expires_at)}까지`
+          : '만료 없음';
+    return (
+      <li className="set__row" key={l.id}>
+        <span className="chip">{l.kind === 'schedule' ? '일정' : '화면'}</span>
+        <span className="share__main">
+          <b className="share__title">{l.kind === 'schedule' ? (l.schedule_title ?? '삭제된 일정') : l.title}</b>
+          <span className="share__meta">
+            {SCOPE_LABEL[l.scope]} · {status} · 조회 {l.view_count}회 · {byUser(l.created_by)}
+          </span>
+        </span>
+        <span className="set__actions">
+          {active ? (
+            <>
+              <button className="btn btn--ghost" onClick={() => copy(shareUrl(origin, l.token))}>
+                복사
+              </button>
+              <a className="btn btn--ghost" href={shareUrl(origin, l.token)} target="_blank" rel="noopener noreferrer">
+                열기
+              </a>
+              {mine(l) && (
+                <button
+                  className="btn btn--ghost btn--danger"
+                  onClick={() => run(() => revokeShareLink(l.id, workspace.slug), '공유를 중지했습니다.')}
+                >
+                  중지
+                </button>
+              )}
+            </>
+          ) : (
+            mine(l) && (
+              <button
+                className="btn btn--ghost"
+                onClick={() => run(() => deleteShareLink(l.id, workspace.slug), '목록에서 지웠습니다.')}
+              >
+                목록에서 지우기
+              </button>
+            )
+          )}
+        </span>
+      </li>
+    );
+  };
+
+  return (
+    <section>
+      <h2 className="set__h2">외부 공유</h2>
+      <p className="set__lead">
+        계정이 없는 사람에게 일정을 읽기 전용 링크로 보여 줍니다. 이 워크스페이스에서 나간 링크를 여기서 확인하고 회수합니다.
+      </p>
+
+      {!sharesReady ? (
+        <p className="set__note">
+          공유 기능의 DB 준비가 아직 안 됐습니다. <b>supabase/migrations/0011_share_links.sql</b> 을 적용하면 이 화면이
+          열립니다.
+        </p>
+      ) : me?.role === 'guest' ? (
+        <p className="set__note">게스트는 외부 공유를 쓸 수 없습니다.</p>
+      ) : (
+        <>
+          <label className="set__row share__policy">
+            <input
+              type="checkbox"
+              checked={allowExternalShare}
+              disabled={!canManage}
+              onChange={(e) =>
+                run(
+                  () => setExternalShare(workspace.id, e.target.checked, workspace.slug),
+                  e.target.checked ? '외부 공유를 켰습니다.' : '외부 공유를 껐습니다. 모든 링크가 지금부터 열리지 않습니다.',
+                )
+              }
+            />
+            <span className="share__main">
+              <b>외부 공유 허용</b>
+              <span className="share__meta">
+                끄면 새 링크를 만들 수 없고, 이미 나간 링크도 그 자리에서 닫힙니다. 다시 켜면 기한이 남은 링크는 되살아납니다.
+                {!canManage && ' 관리자만 바꿀 수 있습니다.'}
+              </span>
+            </span>
+          </label>
+
+          <h3 className="set__h3">공유 중인 링크 · {live.length}</h3>
+          <ul className="set__list">
+            {live.map(row)}
+            {live.length === 0 && (
+              <li className="set__empty">공유 중인 링크가 없습니다. 일정 상세나 상단의 ‘공유’ 에서 만들 수 있습니다.</li>
+            )}
+          </ul>
+
+          {ended.length > 0 && (
+            <>
+              <h3 className="set__h3">만료 · 중지됨 · {ended.length}</h3>
+              <ul className="set__list set__list--dim">{ended.map(row)}</ul>
+            </>
+          )}
+        </>
+      )}
     </section>
   );
 }

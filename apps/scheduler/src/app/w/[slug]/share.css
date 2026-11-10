@@ -1,0 +1,147 @@
+/* ── 외부 공유 창 ─────────────────────────────────────────────────
+   틀(.quick / .qf)은 일정 추가 창과 같다. 여기서는 안쪽만 정한다. */
+.sh {
+  width: min(600px, 94vw);
+}
+.sh .qf__body {
+  gap: 14px;
+}
+.sh__target {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--sunken);
+  border-radius: 8px;
+}
+.sh__targetmain {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.sh__targetmain b {
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sh__targetmain span {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.sh__tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--line-soft);
+  margin: 0 -18px;
+  padding: 0 10px;
+}
+.sh__tabs .tab {
+  height: 38px;
+  font-size: 13px;
+}
+.sh__sec {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+.sh__group {
+  display: grid;
+  gap: 7px;
+}
+.sh__group--row {
+  grid-auto-flow: column;
+  justify-content: start;
+  align-items: center;
+  gap: 10px;
+}
+.sh__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.sh__radio,
+.sh__checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+.sh__opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.sh__note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-3);
+  line-height: 1.5;
+}
+.sh__error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--warn);
+}
+.sh__warn {
+  margin: 0;
+  font-size: 12px;
+  color: var(--warn);
+  background: var(--warn-soft);
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+.sh__ok {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 7px 10px;
+  border-radius: 6px;
+}
+.sh__ok b {
+  font-weight: 700;
+}
+.sh__link {
+  display: flex;
+  gap: 6px;
+}
+.sh__link .input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--f-mono);
+  font-size: 12px;
+}
+.sh__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+.sh__actions a.btn,
+.sh__cardact a.btn {
+  text-decoration: none;
+}
+.sh__card {
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+}
+.sh__cardtitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+.sh__cardact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}

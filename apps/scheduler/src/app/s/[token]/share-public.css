@@ -1,0 +1,184 @@
+/* ── 받는 사람 화면 ────────────────────────────────────────────────
+   앱 셸(shell.css)을 싣지 않는다 — 계정 없는 사람에게 사이드바·툴바 스타일은
+   쓸모가 없고, 그만큼 첫 화면이 가벼워진다. 토큰과 .btn/.input/.chip 은
+   globals.css 에 있다. */
+.pub {
+  min-height: 100dvh;
+  background: var(--ground);
+}
+.pub__page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 28px 16px 48px;
+  display: grid;
+  gap: 14px;
+}
+.pub__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pub__logo {
+  height: 20px;
+  width: auto;
+  display: block;
+}
+.pub__card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 24px 26px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.pub__gate {
+  max-width: 420px;
+  width: 100%;
+  box-sizing: border-box;
+  justify-self: center;
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+.pub__title {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.pub__sub {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 13px;
+}
+.pub__err {
+  margin: 0;
+  color: var(--warn);
+  font-size: 13px;
+}
+.pub__empty {
+  margin-top: 20px;
+}
+.pub__dl {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 12px 16px;
+  margin: 22px 0 0;
+  font-size: 14px;
+}
+.pub__dl dt {
+  color: var(--ink-3);
+}
+.pub__dl dd {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pub__desc {
+  white-space: pre-wrap;
+}
+.pub__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  flex: none;
+  display: inline-block;
+}
+.pub__progwrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.pub__prog {
+  width: 90px;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--sunken);
+  overflow: hidden;
+}
+.pub__prog > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.pub__pct {
+  font-family: var(--f-mono);
+  color: var(--ink-2);
+  min-width: 34px;
+  text-align: right;
+}
+.pub__status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 99px;
+  background: var(--sunken);
+  color: var(--ink-2);
+}
+.pub__status[data-st='active'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.pub__status[data-st='blocked'] {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.pub__groups {
+  display: grid;
+  gap: 22px;
+  margin-top: 22px;
+}
+.pub__gtitle {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pub__gcount {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+.pub__row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line-soft);
+}
+.pub__rowmain {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.pub__rowmain b {
+  font-size: 14px;
+  font-weight: 600;
+}
+.pub__meta {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.pub__foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+@media (max-width: 560px) {
+  .pub__card {
+    padding: 18px;
+  }
+  .pub__row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+}

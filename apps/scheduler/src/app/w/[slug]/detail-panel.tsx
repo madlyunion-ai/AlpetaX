@@ -42,6 +42,8 @@ interface Props {
   canEdit: boolean;
   onClose: () => void;
   onToast: (msg: string) => void;
+  /** 외부 공유 창을 연다. 게스트에게는 없다. */
+  onShare?: () => void;
 }
 
 /** datetime-local 입력은 로컬 시간 문자열을 쓴다. ISO 와의 변환을 한 곳에 모은다. */
@@ -191,6 +193,11 @@ export function DetailPanel(props: Props) {
         <span className="sidebar__dot" style={{ background: team?.color ?? 'var(--ink-3)' }} />
         <span className="detail__headtitle">일정 상세</span>
         {dirty && <span className="detail__badge">수정 중</span>}
+        {props.onShare && (
+          <button className="btn btn--ghost" onClick={props.onShare} title="이 일정을 외부에 공유">
+            공유
+          </button>
+        )}
         <button className="btn btn--ghost" onClick={props.onClose} aria-label="닫기">
           ✕
         </button>
