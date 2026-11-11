@@ -152,6 +152,12 @@ interface Props {
    * '일정 추가' 안내처럼 워크스페이스 안에서만 뜻이 있는 것까지 감춘다.
    */
   readOnly?: boolean;
+  /**
+   * 처음 열 때 이 날짜가 화면 왼쪽 근처에 오도록 스크롤한다. 앱은 기간 자체를
+   * 오늘 기준으로 잡지만, 공유 화면은 공유한 사람이 정한 기간을 그대로 쓰므로
+   * 긴 기간을 촘촘한 축척으로 열면 맨 앞(과거)부터 보이게 된다.
+   */
+  initialFocus?: Date;
 }
 
 interface Band {
@@ -192,6 +198,7 @@ export function RoadmapView({
   workspaceSlug,
   onToast,
   readOnly = false,
+  initialFocus,
 }: Props) {
   const pxPerWeek = PX_PER_WEEK[scale];
   const sc = useMemo(() => createScale(range.start, range.end, pxPerWeek / 7), [range, pxPerWeek]);
@@ -457,6 +464,17 @@ export function RoadmapView({
   const totalHeight = MS_LANE_H + bandsHeight;
   const todayX = sc.x(new Date());
   const showToday = todayX >= 0 && todayX <= sc.totalWidth;
+
+  /* 처음 한 번만, 그리고 축척을 바꿀 때마다 — 같은 날짜를 다시 보게 한다 */
+  const focusTime = initialFocus?.getTime();
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el || focusTime === undefined) return;
+    // 왼쪽에 두 주쯤 여유를 둔다 — 막 지나간 일도 함께 보이게
+    const x = sc.x(new Date(focusTime)) - (pxPerWeek / 7) * 14;
+    el.scrollLeft = Math.max(0, Math.min(el.scrollWidth - el.clientWidth, x));
+    if (headRef.current) headRef.current.scrollLeft = el.scrollLeft;
+  }, [focusTime, sc, pxPerWeek]);
 
   /** 화면 안에 들어오는 마일스톤만, 통계와 프로젝트 이름까지 붙여서 */
   const visibleMilestones = useMemo(() => {

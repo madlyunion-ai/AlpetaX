@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
-import { differenceInCalendarMonths, endOfMonth, startOfMonth } from 'date-fns';
+import { endOfMonth, startOfMonth } from 'date-fns';
 import { TeamSyncLogo } from '../../w/[slug]/logo';
 import { RoadmapView } from '../../w/[slug]/views/roadmap-view';
 import {
@@ -134,13 +134,37 @@ function downloadIcs(token: string, res: Required<OpenShareResult>) {
   setTimeout(() => URL.revokeObjectURL(href), 1000);
 }
 
-/** 보는 기간이 길수록 성기게 — 앱의 로드맵 축척 네 단계 중에서 고른다 */
-function scaleFor(from: Date, to: Date): TimeScale {
-  const months = differenceInCalendarMonths(to, from) + 1;
-  if (months <= 3) return 'day';
-  if (months <= 8) return 'week';
-  if (months <= 20) return 'month';
-  return 'quarter';
+/*
+ * 앱 로드맵과 같은 네 단계·같은 이름. 기본은 '보통' — 막대 이름이 읽히는
+ * 촘촘함이다. 긴 기간은 가로로 스크롤해서 보고, 한눈에 보려면 '전체' 로.
+ */
+const SCALE_STEPS: TimeScale[] = ['day', 'week', 'month', 'quarter'];
+const SCALE_LABEL: Record<TimeScale, string> = { day: '크게', week: '보통', month: '작게', quarter: '전체' };
+const DEFAULT_SCALE: TimeScale = 'week';
+
+function ScaleSwitch({ scale, onChange }: { scale: TimeScale; onChange: (s: TimeScale) => void }) {
+  const i = SCALE_STEPS.indexOf(scale);
+  return (
+    <div className="zoom" role="group" aria-label="기간 확대·축소">
+      <button
+        className="zoom__btn"
+        aria-label="기간 늘리기 — 더 넓게 봅니다"
+        disabled={i >= SCALE_STEPS.length - 1}
+        onClick={() => onChange(SCALE_STEPS[i + 1])}
+      >
+        −
+      </button>
+      <span className="zoom__now">{SCALE_LABEL[scale]}</span>
+      <button
+        className="zoom__btn"
+        aria-label="기간 줄이기 — 더 자세히 봅니다"
+        disabled={i <= 0}
+        onClick={() => onChange(SCALE_STEPS[i - 1])}
+      >
+        +
+      </button>
+    </div>
+  );
 }
 
 function ViewSwitch({ mode, onChange }: { mode: 'roadmap' | 'list'; onChange: () => void }) {
@@ -164,6 +188,9 @@ function ViewSwitch({ mode, onChange }: { mode: 'roadmap' | 'list'; onChange: ()
 function RoadmapShare({ token, res, onList }: { token: string; res: Required<OpenShareResult>; onList: () => void }) {
   const { share, items } = res;
   const [sel, setSel] = useState<string | null>(null);
+  const [scale, setScale] = useState<TimeScale>(DEFAULT_SCALE);
+  // 렌더마다 '지금' 을 새로 읽지 않는다 — 첫 화면의 기준 하나로 고정
+  const [today] = useState(() => new Date());
 
   const model = useMemo(() => {
     // 화면 공유는 늘 기간을 들고 온다. 없을 일은 없지만, 있다면 일정 자체의 기간으로.
@@ -198,8 +225,10 @@ function RoadmapShare({ token, res, onList }: { token: string; res: Required<Ope
         created_by: '', created_at: '', updated_at: '',
       };
     });
-    return { range, scale: scaleFor(range.start, range.end), projects, phases, milestones, members, assigneeMap, schedules };
-  }, [share, items, res.projects, res.phases, res.milestones]);
+    // 처음에는 오늘 근처를 보여 준다. 오늘이 기간 밖이면 기간의 시작부터.
+    const focus = today >= range.start && today <= range.end ? today : range.start;
+    return { range, focus, projects, phases, milestones, members, assigneeMap, schedules };
+  }, [share, items, res.projects, res.phases, res.milestones, today]);
 
   const picked = items.find((it) => it.id === sel) ?? null;
 
@@ -221,6 +250,7 @@ function RoadmapShare({ token, res, onList }: { token: string; res: Required<Ope
             </p>
           </div>
           <span style={{ flex: 1 }} />
+          <ScaleSwitch scale={scale} onChange={setScale} />
           <ViewSwitch mode="roadmap" onChange={onList} />
           <button type="button" className="btn" disabled={!items.length} onClick={() => downloadIcs(token, res)}>
             .ics 로 내 캘린더에 담기
@@ -230,7 +260,8 @@ function RoadmapShare({ token, res, onList }: { token: string; res: Required<Ope
         <div className="pub__rm">
           <RoadmapView
             range={model.range}
-            scale={model.scale}
+            scale={scale}
+            initialFocus={model.focus}
             schedules={model.schedules}
             projects={model.projects}
             phases={model.phases}
