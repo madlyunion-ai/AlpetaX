@@ -153,7 +153,7 @@ interface Props {
    */
   readOnly?: boolean;
   /**
-   * 처음 열 때 이 날짜가 화면 왼쪽 근처에 오도록 스크롤한다. 앱은 기간 자체를
+   * 처음 열 때 이 날짜가 화면 가운데 오도록 스크롤한다. 앱은 기간 자체를
    * 오늘 기준으로 잡지만, 공유 화면은 공유한 사람이 정한 기간을 그대로 쓰므로
    * 긴 기간을 촘촘한 축척으로 열면 맨 앞(과거)부터 보이게 된다.
    */
@@ -470,11 +470,11 @@ export function RoadmapView({
   useEffect(() => {
     const el = bodyRef.current;
     if (!el || focusTime === undefined) return;
-    // 왼쪽에 두 주쯤 여유를 둔다 — 막 지나간 일도 함께 보이게
-    const x = sc.x(new Date(focusTime)) - (pxPerWeek / 7) * 14;
+    // 가운데에 둔다 — 지나간 일과 다가올 일이 같은 폭으로 보이게
+    const x = sc.x(new Date(focusTime)) - el.clientWidth / 2;
     el.scrollLeft = Math.max(0, Math.min(el.scrollWidth - el.clientWidth, x));
     if (headRef.current) headRef.current.scrollLeft = el.scrollLeft;
-  }, [focusTime, sc, pxPerWeek]);
+  }, [focusTime, sc]);
 
   /** 화면 안에 들어오는 마일스톤만, 통계와 프로젝트 이름까지 붙여서 */
   const visibleMilestones = useMemo(() => {

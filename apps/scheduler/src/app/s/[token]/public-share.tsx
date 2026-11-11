@@ -135,12 +135,13 @@ function downloadIcs(token: string, res: Required<OpenShareResult>) {
 }
 
 /*
- * 앱 로드맵과 같은 네 단계·같은 이름. 기본은 '보통' — 막대 이름이 읽히는
- * 촘촘함이다. 긴 기간은 가로로 스크롤해서 보고, 한눈에 보려면 '전체' 로.
+ * 앱 로드맵과 같은 네 단계·같은 이름. 기본은 '크게' — 받는 사람은 대개
+ * 지금 무엇이 진행 중인지를 보러 오므로 오늘 앞뒤를 가장 자세히 보여 준다.
+ * 긴 기간은 가로로 스크롤해서 보고, 한눈에 보려면 '전체' 로.
  */
 const SCALE_STEPS: TimeScale[] = ['day', 'week', 'month', 'quarter'];
 const SCALE_LABEL: Record<TimeScale, string> = { day: '크게', week: '보통', month: '작게', quarter: '전체' };
-const DEFAULT_SCALE: TimeScale = 'week';
+const DEFAULT_SCALE: TimeScale = 'day';
 
 function ScaleSwitch({ scale, onChange }: { scale: TimeScale; onChange: (s: TimeScale) => void }) {
   const i = SCALE_STEPS.indexOf(scale);
@@ -225,7 +226,7 @@ function RoadmapShare({ token, res, onList }: { token: string; res: Required<Ope
         created_by: '', created_at: '', updated_at: '',
       };
     });
-    // 처음에는 오늘 근처를 보여 준다. 오늘이 기간 밖이면 기간의 시작부터.
+    // 처음에는 오늘을 가운데 둔다. 오늘이 기간 밖이면 기간의 시작부터.
     const focus = today >= range.start && today <= range.end ? today : range.start;
     return { range, focus, projects, phases, milestones, members, assigneeMap, schedules };
   }, [share, items, res.projects, res.phases, res.milestones, today]);
