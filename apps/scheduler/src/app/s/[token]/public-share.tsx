@@ -143,7 +143,13 @@ function downloadIcs(token: string, res: Required<OpenShareResult>) {
  */
 const SCALE_STEPS: TimeScale[] = ['day', 'week', 'month', 'quarter'];
 const SCALE_LABEL: Record<TimeScale, string> = { day: '크게', week: '보통', month: '작게', quarter: '전체' };
-const DEFAULT_SCALE: TimeScale = 'day';
+/**
+ * 보기마다 처음 축척. 타임라인은 같은 이름에서 로드맵보다 훨씬 촘촘해서
+ * (크게: 하루 80px 대 12px) 앱에서 보듯 '보통' 으로 연다. 축척은 보기마다
+ * 따로 기억한다 — 이름은 같아도 넓이가 달라, 한쪽에서 고른 값을 다른 쪽에
+ * 그대로 옮기면 엉뚱하게 넓거나 좁아진다.
+ */
+const DEFAULT_SCALE: Record<'roadmap' | 'timeline', TimeScale> = { roadmap: 'day', timeline: 'week' };
 
 function ScaleSwitch({ scale, onChange }: { scale: TimeScale; onChange: (s: TimeScale) => void }) {
   const i = SCALE_STEPS.indexOf(scale);
@@ -176,11 +182,6 @@ const VIEW_TABS: { mode: ViewMode; label: string }[] = [
   { mode: 'timeline', label: '타임라인' },
   { mode: 'list', label: '목록' },
 ];
-/**
- * 타임라인은 같은 축척 이름에서 로드맵보다 훨씬 촘촘하다(크게: 하루 80px 대
- * 12px). 같은 단추로 비슷한 넓이를 보게 한 단계 넓혀 쓴다.
- */
-const TIMELINE_SCALE: Record<TimeScale, TimeScale> = { day: 'week', week: 'month', month: 'quarter', quarter: 'quarter' };
 /** 공유 화면에는 팀 id 가 오지 않는다 — 타임라인 막대는 기본 색으로 */
 const NO_TEAMS = new Map<string, Team>();
 
@@ -206,8 +207,8 @@ function ViewSwitch({ mode, onChange }: { mode: ViewMode; onChange: (m: ViewMode
 /**
  * 앱의 로드맵·타임라인 화면을 그대로 쓴다 — 받는 사람이 보는 그림과 팀이
  * 보는 그림이 같아야 '이 일정' 이라고 짚어 말할 수 있다. 편집은 막고
- * (readOnly), 서버가 내보내지 않은 항목은 빈 값으로 채운다. 두 보기가 같은
- * 축척·선택을 나눠 써서, 탭을 바꿔도 고른 일정과 축척이 그대로다.
+ * (readOnly), 서버가 내보내지 않은 항목은 빈 값으로 채운다. 두 보기가 고른
+ * 일정을 나눠 써서 탭을 바꿔도 그대로다. 축척은 보기마다 따로 기억한다.
  */
 function ChartShare({
   token,
@@ -222,7 +223,9 @@ function ChartShare({
 }) {
   const { share, items } = res;
   const [sel, setSel] = useState<string | null>(null);
-  const [scale, setScale] = useState<TimeScale>(DEFAULT_SCALE);
+  const [scales, setScales] = useState(DEFAULT_SCALE);
+  const scale = scales[view];
+  const setScale = (s: TimeScale) => setScales((cur) => ({ ...cur, [view]: s }));
   // 렌더마다 '지금' 을 새로 읽지 않는다 — 첫 화면의 기준 하나로 고정
   const [today] = useState(() => new Date());
 
@@ -295,7 +298,7 @@ function ChartShare({
           {view === 'timeline' ? (
             <TimelineView
               range={model.range}
-              scale={TIMELINE_SCALE[scale]}
+              scale={scale}
               initialFocus={model.focus}
               schedules={model.schedules}
               milestones={model.milestones}
