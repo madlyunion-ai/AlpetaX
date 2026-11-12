@@ -110,6 +110,39 @@ const MS_LANE_H = 26; // 마일스톤 전용 줄
  * 듣도록 메모리 값을 함께 둔다.
  */
 const LINKS_KEY = 'teamsync:roadmap-links';
+/** 연결선 꺾임 모서리 반경 */
+const LINK_RADIUS = 6;
+/** 줄기가 하위 시작보다 얼마나 앞에서 내려오는지 */
+const LINK_LEAD = 20;
+/** 줄 사이 틈에서 가로선이 지나가는 높이(막대 가장자리에서) */
+const LINK_GUTTER = 4;
+
+/**
+ * 꺾은선을 모서리가 둥근 SVG 경로로. 모서리마다 양쪽 선분의 절반을 넘지
+ * 않게 반경을 줄여, 짧은 꺾임에서도 선이 되돌아가지 않는다.
+ */
+function roundedPath(points: [number, number][], radius: number): string {
+  // 길이 0 인 선분은 모서리를 만들지 못하므로 미리 걸러 낸다
+  const pts = points.filter(
+    (p, i) => i === 0 || Math.abs(p[0] - points[i - 1][0]) + Math.abs(p[1] - points[i - 1][1]) > 0.5,
+  );
+  let d = `M ${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const [px, py] = pts[i - 1];
+    const [x, y] = pts[i];
+    const [nx, ny] = pts[i + 1];
+    const l1 = Math.hypot(x - px, y - py);
+    const l2 = Math.hypot(nx - x, ny - y);
+    const r = Math.min(radius, l1 / 2, l2 / 2);
+    const ax = x + ((px - x) / l1) * r;
+    const ay = y + ((py - y) / l1) * r;
+    const bx = x + ((nx - x) / l2) * r;
+    const by = y + ((ny - y) / l2) * r;
+    d += ` L ${ax} ${ay} Q ${x} ${y} ${bx} ${by}`;
+  }
+  const last = pts[pts.length - 1];
+  return `${d} L ${last[0]} ${last[1]}`;
+}
 const linkListeners = new Set<() => void>();
 let linksMemo: boolean | null = null;
 function subscribeLinks(cb: () => void) {
@@ -617,11 +650,12 @@ export function RoadmapView({
   );
 
   /* ── 상위·하위 연결선 ───────────────────────────────────────────────
-     타임라인과 같은 약속 — 상위 일정에서 하위 일정으로 점선 화살표.
-     화살촉은 되도록 하위 막대의 '시작'(왼쪽 끝)에 꽂는다.
-       · 하위가 상위 뒤에 시작 → 상위 끝 쪽에서 나와 줄 사이 틈으로 건너가
-         하위 시작 쪽 가장자리로 (같은 줄에 바로 붙으면 곧게)
-       · 기간이 겹침 → 겹친 구간에서 세로로 내려(올라) 하위 막대 가장자리로
+     상위 일정에서 하위 일정으로 실선 화살표. 모서리는 둥글게 꺾는다.
+     상위 막대 아래에서 '줄기'가 세로로 내려와, 하위 막대의 시작(왼쪽 끝)
+     가운데로 옆에서 꽂힌다 — 간트 도구들이 흔히 쓰는 계단 모양.
+       · 가까운 하위 → 줄기를 하위 높이까지 내려 바로 옆으로
+       · 먼 하위 → 줄 사이 틈으로 건너가 하위 바로 앞에서 꺾어 옆으로
+       · 하위가 상위와 거의 같이 시작 → 겹친 구간에서 세로로 가장자리에
      둘 중 하나라도 지금 기간 밖이라 그리지 않은 막대면 선도 긋지 않는다. */
   const showLinks = useSyncExternalStore(subscribeLinks, readLinks, () => true);
 
@@ -640,6 +674,17 @@ export function RoadmapView({
     const visible = (s: Schedule) =>
       !(new Date(s.end_at) < range.start || new Date(s.start_at) > range.end);
 
+    // 줄(막대 위쪽 y)마다 지금 그려진 막대의 가로 구간
+    const rowSpans = new Map<number, [string, number, number][]>();
+    for (const s of schedules) {
+      const top = topById.get(s.id);
+      if (top === undefined || !visible(s)) continue;
+      const { x, w } = barBox(s);
+      const list = rowSpans.get(top) ?? [];
+      list.push([s.id, x, x + w]);
+      rowSpans.set(top, list);
+    }
+
     const out: { key: string; d: string }[] = [];
     for (const c of schedules) {
       if (!c.parent_id) continue;
@@ -655,42 +700,61 @@ export function RoadmapView({
       const cr = C.x + C.w;
       const py = pt + BAR_H / 2;
       const cy = ct + BAR_H / 2;
+      const sameRow = ct === pt;
       const down = ct >= pt;
-      let d: string;
+      // 상위 막대에서 선이 나오는 가장자리(아래·위)와 하위 줄 바로 바깥의 틈
+      const ys = sameRow || !down ? pt : pt + BAR_H;
+      const gy = sameRow || down ? ct - LINK_GUTTER : ct + BAR_H + LINK_GUTTER;
 
-      if (C.x >= pr && ct === pt && C.x - pr < 24) {
-        // 같은 줄에서 바로 이어지는 하위 — 곧게 잇는다
-        d = `M ${pr} ${py} H ${C.x}`;
-      } else if (C.x >= pr) {
-        /*
-         * 뒤따르는 하위. 가로선을 하위 줄의 '가운데'로 끌고 가면 그 줄의 다른
-         * 막대 뒤로 숨어, 엉뚱한 두 막대를 잇는 선처럼 보인다. 그래서 막대가
-         * 없는 줄 사이 틈(하위 막대 바로 위·아래 4px)으로 건너가고, 하위 막대의
-         * 시작 쪽 가장자리로 내려(올라) 꽂는다.
-         */
-        const sameRow = ct === pt;
-        const sx = Math.max(P.x + 4, pr - 6);
-        const ys = sameRow || !down ? pt : pt + BAR_H;
-        const gy = sameRow || down ? ct - 4 : ct + BAR_H + 4;
-        const ex = C.x + Math.min(8, C.w / 2);
-        const ye = sameRow || down ? ct : ct + BAR_H;
-        d = `M ${sx} ${ys} V ${gy} H ${ex} V ${ye}`;
-      } else {
-        const lo = Math.max(P.x, C.x);
-        const hi = Math.min(pr, cr);
-        if (hi > lo && ct !== pt) {
-          // 겹친 구간 안에서 세로로 — 하위 시작 쪽에 붙인다
-          const sx = lo + Math.min(8, (hi - lo) / 2);
-          const ys = down ? pt + BAR_H : pt;
-          const ye = down ? ct : ct + BAR_H;
-          d = `M ${sx} ${ys} V ${ye}`;
+      /*
+       * 줄기(trunk) — 상위 막대 아래에서 세로로 내려오는 선. 하위 시작보다
+       * 조금 앞, 그러나 상위 막대 안쪽에서 나온다.
+       */
+      const lo = P.x + 8;
+      const hi = pr - 6;
+      const tx = hi > lo ? Math.min(hi, Math.max(lo, C.x - LINK_LEAD)) : P.x + P.w / 2;
+
+      let pts: [number, number][];
+      if (sameRow && C.x >= pr && C.x - pr < 24) {
+        // 같은 줄에 바로 붙은 하위 — 곧게
+        pts = [[pr, py], [C.x, cy]];
+      } else if (C.x - tx >= 10) {
+        if (C.x - tx <= LINK_LEAD + 8 && !sameRow) {
+          // 가까운 하위 — 줄기를 하위 가운데 높이까지 내려 옆에서 꽂는다
+          pts = [[tx, ys], [tx, cy], [C.x, cy]];
         } else {
-          // 하위가 상위 시작 전에 끝나는 드문 경우 — 상위 시작에서 왼쪽으로 하위 끝까지
+          /*
+           * 먼 하위 — 하위 줄의 가운데로 가로지르면 그 줄의 다른 막대 뒤로
+           * 숨는다. 막대가 없는 줄 사이 틈으로 건너가, 하위 바로 앞에서 꺾어
+           * 옆으로 꽂는다.
+           */
+          const ex = C.x - 12;
+          // 하위 바로 앞자리를 같은 줄의 다른 막대가 차지하면 옆으로 꽂을 틈이
+          // 없다 — 그때는 틈에서 하위 막대 시작 쪽 위(아래) 가장자리로 꽂는다
+          const blocked = (rowSpans.get(ct) ?? []).some(
+            ([id, x0, x1]) => id !== c.id && x0 < C.x && x1 > ex - LINK_RADIUS,
+          );
+          if (blocked) {
+            const ix = C.x + Math.min(10, C.w / 2);
+            pts = [[tx, ys], [tx, gy], [ix, gy], [ix, down || sameRow ? ct : ct + BAR_H]];
+          } else {
+            pts = [[tx, ys], [tx, gy], [ex, gy], [ex, cy], [C.x, cy]];
+          }
+        }
+      } else {
+        const a = Math.max(P.x, C.x);
+        const b = Math.min(pr, cr);
+        if (b > a && !sameRow) {
+          // 하위가 상위와 거의 같이 시작 — 겹친 구간에서 세로로 위·아래 가장자리에 꽂는다
+          const x = a + Math.min(8, (b - a) / 2);
+          pts = [[x, ys], [x, down ? ct : ct + BAR_H]];
+        } else {
+          // 하위가 상위 시작 전에 끝나는 드문 경우 — 상위 시작에서 하위 끝으로
           const mid = cr + Math.max(4, (P.x - cr) / 2);
-          d = `M ${P.x} ${py} H ${mid} V ${cy} H ${cr}`;
+          pts = [[P.x, py], [mid, py], [mid, cy], [cr, cy]];
         }
       }
-      out.push({ key: c.id, d });
+      out.push({ key: c.id, d: roundedPath(pts, LINK_RADIUS) });
     }
     return out;
   }, [showLinks, hasParentLinks, bands, schedules, range, barBox]);
@@ -1052,8 +1116,17 @@ export function RoadmapView({
               aria-hidden="true"
             >
               <defs>
-                <marker id="rm-arw" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-                  <path d="M0,0 L6,3 L0,6 Z" fill="var(--ink-3)" />
+                <marker
+                  id="rm-arw"
+                  viewBox="0 0 8 8"
+                  markerWidth="7"
+                  markerHeight="7"
+                  markerUnits="userSpaceOnUse"
+                  refX="7.5"
+                  refY="4"
+                  orient="auto"
+                >
+                  <path d="M0.5,0.8 L7.5,4 L0.5,7.2 Z" className="rm__linkhead" />
                 </marker>
               </defs>
               {links.map((l) => (

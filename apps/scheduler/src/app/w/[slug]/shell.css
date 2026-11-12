@@ -2617,8 +2617,8 @@ img.rm__face {
 }
 
 /* ── 로드맵 상위·하위 연결선 ───────────────────────────────────────
-   타임라인과 같은 생김새 — 상위 일정 연결은 점선. 막대(z 2) 아래에 깔아
-   제목과 담당자 얼굴을 가리지 않고, 막대 사이 빈 곳에서만 드러난다. */
+   둥근 모서리의 가는 실선. 막대(z 2) 아래에 깔아 제목과 담당자 얼굴을
+   가리지 않고, 막대 사이 빈 곳에서만 드러난다. */
 .rm__links {
   position: absolute;
   inset: 0;
@@ -2630,8 +2630,14 @@ img.rm__face {
   fill: none;
   stroke: var(--ink-3);
   stroke-width: 1;
-  stroke-dasharray: 4 3;
-  opacity: 0.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.7;
+}
+.rm__links .rm__linkhead {
+  fill: var(--ink-3);
+  stroke: none;
+  opacity: 1;
 }
 
 /* ── 연결선 보이기·숨기기 FAB ──────────────────────────────────────
