@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   useTransition,
 } from 'react';
 import Link from 'next/link';
@@ -102,6 +103,39 @@ function phaseLabelWidth(name: string): number {
 }
 const HEAD_H = 53; // globals.css 의 --rm-head-h 와 같은 값. 팝오버 위치 계산에만 쓴다
 const MS_LANE_H = 26; // 마일스톤 전용 줄
+/**
+ * 연결선 보이기 여부. 이 브라우저에 기억해 둔다 — 기본은 보임.
+ * localStorage 는 React 바깥의 저장소라 useSyncExternalStore 로 읽는다
+ * (welcome-modal 과 같은 방식). 저장소를 막아 둔 브라우저에서도 단추가
+ * 듣도록 메모리 값을 함께 둔다.
+ */
+const LINKS_KEY = 'teamsync:roadmap-links';
+const linkListeners = new Set<() => void>();
+let linksMemo: boolean | null = null;
+function subscribeLinks(cb: () => void) {
+  linkListeners.add(cb);
+  return () => {
+    linkListeners.delete(cb);
+  };
+}
+function readLinks(): boolean {
+  if (linksMemo !== null) return linksMemo;
+  try {
+    return localStorage.getItem(LINKS_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
+function toggleLinks() {
+  const next = !readLinks();
+  linksMemo = next;
+  try {
+    localStorage.setItem(LINKS_KEY, next ? 'on' : 'off');
+  } catch {
+    /* 기억은 못 해도 지금 화면은 바뀐다 */
+  }
+  linkListeners.forEach((l) => l());
+}
 
 interface Props {
   range: DateRange;
@@ -564,6 +598,89 @@ export function RoadmapView({
     };
   }, [drag, pxPerWeek, schedules, onToast]);
 
+  /**
+   * 막대 한 개의 가로 자리. 그리는 곳과 연결선이 같은 값을 써야 선 끝이
+   * 막대에 정확히 붙는다. 끄는 중이면 움직인 만큼을 더한다.
+   */
+  const barBox = useCallback(
+    (s: Schedule) => {
+      const x0 = sc.x(s.start_at);
+      // 하루 차이로 이어 붙은 막대가 한 덩어리로 보이지 않게 오른쪽을 2px 남긴다
+      const w0 = Math.max(10, sc.x(s.end_at) - x0 - 2);
+      const g = ghost?.id === s.id ? ghost : null;
+      const x = g && (g.edge === 'start' || g.edge === 'move') ? x0 + g.dx : x0;
+      const w =
+        g && g.edge !== 'move' ? Math.max(10, g.edge === 'start' ? w0 - g.dx : w0 + g.dx) : w0;
+      return { x, w, dragging: g?.edge === 'move' };
+    },
+    [sc, ghost],
+  );
+
+  /* ── 상위·하위 연결선 ───────────────────────────────────────────────
+     타임라인과 같은 약속 — 상위 일정에서 하위 일정으로 점선 화살표.
+     로드맵은 하위 일정이 대개 상위 기간 안에서 시작하므로 두 갈래로 긋는다.
+       · 하위가 상위가 끝난 뒤에 시작 → 상위 끝에서 꺾어 하위 시작으로
+       · 기간이 겹침 → 겹친 구간에서 세로로 내려(올라) 하위 막대 가장자리로
+     둘 중 하나라도 지금 기간 밖이라 그리지 않은 막대면 선도 긋지 않는다. */
+  const showLinks = useSyncExternalStore(subscribeLinks, readLinks, () => true);
+
+  const hasParentLinks = useMemo(() => schedules.some((s) => s.parent_id), [schedules]);
+
+  const links = useMemo(() => {
+    if (!showLinks || !hasParentLinks) return [];
+    // 막대마다 캔버스 기준 위쪽 y — 띠는 마일스톤 줄 아래로 차례로 쌓인다
+    const topById = new Map<string, number>();
+    let y = MS_LANE_H;
+    for (const b of bands) {
+      for (const bar of b.bars) topById.set(bar.schedule.id, y + BAND_PAD + bar.lane * (BAR_H + LANE_GAP));
+      y += b.height;
+    }
+    const byId = new Map(schedules.map((s) => [s.id, s]));
+    const visible = (s: Schedule) =>
+      !(new Date(s.end_at) < range.start || new Date(s.start_at) > range.end);
+
+    const out: { key: string; d: string }[] = [];
+    for (const c of schedules) {
+      if (!c.parent_id) continue;
+      const p = byId.get(c.parent_id);
+      if (!p || !visible(p) || !visible(c)) continue;
+      const pt = topById.get(p.id);
+      const ct = topById.get(c.id);
+      if (pt === undefined || ct === undefined) continue;
+
+      const P = barBox(p);
+      const C = barBox(c);
+      const pr = P.x + P.w;
+      const cr = C.x + C.w;
+      const py = pt + BAR_H / 2;
+      const cy = ct + BAR_H / 2;
+      const down = ct >= pt;
+      let d: string;
+
+      if (C.x >= pr + 8) {
+        // 뒤따르는 하위 — 상위 끝에서 나와 꺾어 들어간다
+        const mid = pr + Math.min(10, (C.x - pr) / 2);
+        d = `M ${pr} ${py} H ${mid} V ${cy} H ${C.x}`;
+      } else {
+        const lo = Math.max(P.x, C.x);
+        const hi = Math.min(pr, cr);
+        if (hi > lo && ct !== pt) {
+          // 겹친 구간 안에서 세로로 — 하위 시작 쪽에 붙인다
+          const sx = lo + Math.min(8, (hi - lo) / 2);
+          const ys = down ? pt + BAR_H : pt;
+          const ye = down ? ct : ct + BAR_H;
+          d = `M ${sx} ${ys} V ${ye}`;
+        } else {
+          // 하위가 상위보다 앞서 끝나는 드문 경우 — 상위 시작에서 왼쪽으로 돌아 하위 끝으로
+          const mid = Math.min(P.x, cr) - 10;
+          d = `M ${P.x} ${py} H ${mid} V ${cy} H ${cr}`;
+        }
+      }
+      out.push({ key: c.id, d });
+    }
+    return out;
+  }, [showLinks, hasParentLinks, bands, schedules, range, barBox]);
+
   const rootRef = useRef<HTMLDivElement>(null);
 
   const editingProject = editing ? (projects.find((p) => p.id === editing.id) ?? null) : null;
@@ -807,19 +924,11 @@ export function RoadmapView({
                 // 보이는 기간과 겹치지 않으면 그리지 않는다. 줄과 높이는
                 // 이미 잡혀 있으므로 자리는 그대로 남는다.
                 if (new Date(s.end_at) < range.start || new Date(s.start_at) > range.end) return null;
-                const x0 = sc.x(s.start_at);
-                // 하루 차이로 이어 붙은 막대가 한 덩어리로 보이지 않게 오른쪽을 2px 남긴다
-                const w0 = Math.max(10, sc.x(s.end_at) - x0 - 2);
+                const { x, w, dragging } = barBox(s);
                 /*
                  * 끄는 동안에는 저장하지 않고 이 막대만 움직여 보여 준다.
                  * 시작을 끌면 왼쪽 끝이, 끝을 끌면 오른쪽 폭이 따라온다.
                  */
-                const g = ghost?.id === s.id ? ghost : null;
-                const x = g && (g.edge === 'start' || g.edge === 'move') ? x0 + g.dx : x0;
-                const w =
-                  g && g.edge !== 'move'
-                    ? Math.max(10, g.edge === 'start' ? w0 - g.dx : w0 + g.dx)
-                    : w0;
                 const days = differenceInCalendarDays(new Date(s.end_at), new Date(s.start_at)) + 1;
                 const past = new Date(s.end_at) < todayStart;
                 return (
@@ -836,7 +945,7 @@ export function RoadmapView({
                       top: BAND_PAD + bar.lane * (BAR_H + LANE_GAP),
                       background: barColor(s, b.barColor, markLate),
                     }}
-                    data-dragging={g?.edge === 'move'}
+                    data-dragging={dragging}
                     onPointerDown={(e) => {
                       if (!canEdit) return;
                       dragged.current = false;
@@ -919,8 +1028,42 @@ export function RoadmapView({
               })}
             </div>
           ))}
+
+          {/* 상위·하위 연결선 — 막대 아래에 깔아 제목을 가리지 않는다 */}
+          {links.length > 0 && (
+            <svg
+              className="rm__links"
+              width={sc.totalWidth}
+              height={totalHeight}
+              aria-hidden="true"
+            >
+              <defs>
+                <marker id="rm-arw" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                  <path d="M0,0 L6,3 L0,6 Z" fill="var(--ink-3)" />
+                </marker>
+              </defs>
+              {links.map((l) => (
+                <path key={l.key} d={l.d} markerEnd="url(#rm-arw)" />
+              ))}
+            </svg>
+          )}
         </div>
       </div>
+
+      {/* 연결선 보이기·숨기기. 상위 일정이 하나도 없으면 누를 일이 없다. */}
+      {hasParentLinks && (
+        <button
+          type="button"
+          className="rm__fab"
+          data-on={showLinks}
+          aria-pressed={showLinks}
+          aria-label={showLinks ? '연결선 숨기기' : '연결선 보이기'}
+          title={showLinks ? '연결선 숨기기' : '연결선 보이기'}
+          onClick={toggleLinks}
+        >
+          <LinkIcon off={!showLinks} />
+        </button>
+      )}
 
       {/*
         양 끝의 기간 이동 손잡이.
@@ -997,6 +1140,19 @@ const PROJECT_COLORS = [
   '#E8814A',
   '#7B8698',
 ];
+
+/** 연결선 단추의 아이콘 — 꺾인 화살표. 숨긴 상태에서는 사선을 그어 둔다. */
+function LinkIcon({ off }: { off: boolean }) {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2.5" y="3" width="8" height="4" rx="1" />
+      <rect x="9.5" y="13" width="8" height="4" rx="1" />
+      <path d="M5.5 7v8h2.5" strokeDasharray="2 1.6" />
+      <path d="M7 13.4 8.6 15 7 16.6" />
+      {off && <path d="M3 18 17 2" />}
+    </svg>
+  );
+}
 
 /** 세로 점 세 개. 좁은 칸에서 톱니바퀴보다 형태가 또렷하다. */
 function MenuIcon() {

@@ -2615,3 +2615,61 @@ img.rm__face {
 .wsnew__body > .textarea {
   margin-bottom: 10px;
 }
+
+/* ── 로드맵 상위·하위 연결선 ───────────────────────────────────────
+   타임라인과 같은 생김새 — 상위 일정 연결은 점선. 막대(z 2) 아래에 깔아
+   제목과 담당자 얼굴을 가리지 않고, 막대 사이 빈 곳에서만 드러난다. */
+.rm__links {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: visible;
+}
+.rm__links path {
+  fill: none;
+  stroke: var(--ink-3);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 3;
+  opacity: 0.75;
+}
+
+/* ── 연결선 보이기·숨기기 FAB ──────────────────────────────────────
+   일정표 오른쪽 아래. 오른쪽 기간 이동 손잡이(22px)만큼 비켜선다. */
+.rm__fab {
+  position: absolute;
+  right: 38px;
+  bottom: 20px;
+  z-index: 10;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+  box-shadow: var(--shadow), 0 4px 12px -4px rgba(23, 27, 36, 0.22);
+  cursor: pointer;
+  transition:
+    background-color 0.14s ease,
+    color 0.14s ease,
+    border-color 0.14s ease,
+    transform 0.14s ease;
+}
+.rm__fab[data-on='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.rm__fab:hover {
+  transform: translateY(-1px);
+}
+.rm__fab:active {
+  transform: translateY(0) scale(0.96);
+}
+.rm__fab:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
