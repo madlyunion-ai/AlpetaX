@@ -37,6 +37,11 @@ interface Props {
   onSelect: (id: string) => void;
   canEdit: boolean;
   onToast: (msg: string) => void;
+  /**
+   * 처음 열 때 이 날짜가 화면 가운데 오도록 스크롤한다. 공유 화면처럼 기간이
+   * 길게 정해져 들어올 때 맨 앞(과거)부터 보이지 않게 — 로드맵과 같은 약속.
+   */
+  initialFocus?: Date;
 }
 
 type Drag =
@@ -56,6 +61,7 @@ export function TimelineView({
   onSelect,
   canEdit,
   onToast,
+  initialFocus,
 }: Props) {
   const pxPerDay = PX_PER_DAY[scale];
   const sc = useMemo(() => createScale(range.start, range.end, pxPerDay), [range, pxPerDay]);
@@ -144,6 +150,16 @@ export function TimelineView({
     return Math.max(y, 200);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sections, manualSections, autoCollapsed, groupBy]);
+
+  /* 처음 한 번, 그리고 축척을 바꿀 때마다 — 같은 날짜를 다시 가운데로 */
+  const focusTime = initialFocus?.getTime();
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || focusTime === undefined) return;
+    const x = sc.x(new Date(focusTime)) - el.clientWidth / 2;
+    el.scrollLeft = Math.max(0, Math.min(el.scrollWidth - el.clientWidth, x));
+    if (axisRef.current) axisRef.current.scrollLeft = el.scrollLeft;
+  }, [focusTime, sc]);
 
   /* ── 드래그 ────────────────────────────────────────────────────── */
   useEffect(() => {

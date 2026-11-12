@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { endOfMonth, startOfMonth } from 'date-fns';
 import { TeamSyncLogo } from '../../w/[slug]/logo';
 import { RoadmapView } from '../../w/[slug]/views/roadmap-view';
+import { TimelineView } from '../../w/[slug]/views/timeline-view';
 import {
   STATUS_LABEL,
   type Membership,
@@ -11,6 +12,7 @@ import {
   type Phase,
   type Project,
   type Schedule,
+  type Team,
   type TimeScale,
 } from '@/lib/schedule-core/types';
 import {
@@ -114,10 +116,10 @@ function Progress({ it }: { it: ShareItem }) {
 
 function Opened({ token, res }: { token: string; res: Required<OpenShareResult> }) {
   // 화면 공유는 앱과 같은 로드맵으로 연다. 일정 한 건은 막대 하나뿐이라 카드가 낫다.
-  const [mode, setMode] = useState<'roadmap' | 'list'>('roadmap');
-  if (res.share.kind === 'view' && mode === 'roadmap')
-    return <RoadmapShare token={token} res={res} onList={() => setMode('list')} />;
-  return <ListShare token={token} res={res} onRoadmap={res.share.kind === 'view' ? () => setMode('roadmap') : undefined} />;
+  const [mode, setMode] = useState<ViewMode>('roadmap');
+  if (res.share.kind === 'view' && mode !== 'list')
+    return <ChartShare token={token} res={res} view={mode} onView={setMode} />;
+  return <ListShare token={token} res={res} onView={res.share.kind === 'view' ? setMode : undefined} />;
 }
 
 /** .ics 내려받기 — 두 보기가 같이 쓴다 */
@@ -168,25 +170,56 @@ function ScaleSwitch({ scale, onChange }: { scale: TimeScale; onChange: (s: Time
   );
 }
 
-function ViewSwitch({ mode, onChange }: { mode: 'roadmap' | 'list'; onChange: () => void }) {
+type ViewMode = 'roadmap' | 'timeline' | 'list';
+const VIEW_TABS: { mode: ViewMode; label: string }[] = [
+  { mode: 'roadmap', label: '로드맵' },
+  { mode: 'timeline', label: '타임라인' },
+  { mode: 'list', label: '목록' },
+];
+/**
+ * 타임라인은 같은 축척 이름에서 로드맵보다 훨씬 촘촘하다(크게: 하루 80px 대
+ * 12px). 같은 단추로 비슷한 넓이를 보게 한 단계 넓혀 쓴다.
+ */
+const TIMELINE_SCALE: Record<TimeScale, TimeScale> = { day: 'week', week: 'month', month: 'quarter', quarter: 'quarter' };
+/** 공유 화면에는 팀 id 가 오지 않는다 — 타임라인 막대는 기본 색으로 */
+const NO_TEAMS = new Map<string, Team>();
+
+function ViewSwitch({ mode, onChange }: { mode: ViewMode; onChange: (m: ViewMode) => void }) {
   return (
     <div className="pub__switch" role="tablist" aria-label="보기">
-      <button type="button" role="tab" aria-selected={mode === 'roadmap'} data-on={mode === 'roadmap'} onClick={mode === 'list' ? onChange : undefined}>
-        로드맵
-      </button>
-      <button type="button" role="tab" aria-selected={mode === 'list'} data-on={mode === 'list'} onClick={mode === 'roadmap' ? onChange : undefined}>
-        목록
-      </button>
+      {VIEW_TABS.map((t) => (
+        <button
+          key={t.mode}
+          type="button"
+          role="tab"
+          aria-selected={mode === t.mode}
+          data-on={mode === t.mode}
+          onClick={mode === t.mode ? undefined : () => onChange(t.mode)}
+        >
+          {t.label}
+        </button>
+      ))}
     </div>
   );
 }
 
 /**
- * 앱의 로드맵 화면을 그대로 쓴다 — 받는 사람이 보는 그림과 팀이 보는 그림이
- * 같아야 '이 일정' 이라고 짚어 말할 수 있다. 편집은 막고(readOnly), 서버가
- * 내보내지 않은 항목은 빈 값으로 채운다.
+ * 앱의 로드맵·타임라인 화면을 그대로 쓴다 — 받는 사람이 보는 그림과 팀이
+ * 보는 그림이 같아야 '이 일정' 이라고 짚어 말할 수 있다. 편집은 막고
+ * (readOnly), 서버가 내보내지 않은 항목은 빈 값으로 채운다. 두 보기가 같은
+ * 축척·선택을 나눠 써서, 탭을 바꿔도 고른 일정과 축척이 그대로다.
  */
-function RoadmapShare({ token, res, onList }: { token: string; res: Required<OpenShareResult>; onList: () => void }) {
+function ChartShare({
+  token,
+  res,
+  view,
+  onView,
+}: {
+  token: string;
+  res: Required<OpenShareResult>;
+  view: 'roadmap' | 'timeline';
+  onView: (m: ViewMode) => void;
+}) {
   const { share, items } = res;
   const [sel, setSel] = useState<string | null>(null);
   const [scale, setScale] = useState<TimeScale>(DEFAULT_SCALE);
@@ -252,32 +285,50 @@ function RoadmapShare({ token, res, onList }: { token: string; res: Required<Ope
           </div>
           <span style={{ flex: 1 }} />
           <ScaleSwitch scale={scale} onChange={setScale} />
-          <ViewSwitch mode="roadmap" onChange={onList} />
+          <ViewSwitch mode={view} onChange={onView} />
           <button type="button" className="btn" disabled={!items.length} onClick={() => downloadIcs(token, res)}>
             .ics 로 내 캘린더에 담기
           </button>
         </header>
 
-        <div className="pub__rm">
-          <RoadmapView
-            range={model.range}
-            scale={scale}
-            initialFocus={model.focus}
-            schedules={model.schedules}
-            projects={model.projects}
-            phases={model.phases}
-            milestones={model.milestones}
-            members={model.members}
-            assigneeMap={model.assigneeMap}
-            markLate={share.show_progress}
-            selectedId={sel}
-            onSelect={(id) => setSel((cur) => (cur === id ? null : id))}
-            onOpenMilestones={() => {}}
-            canEdit={false}
-            readOnly
-            workspaceSlug=""
-            onToast={() => {}}
-          />
+        <div className="pub__rm" data-view={view}>
+          {view === 'timeline' ? (
+            <TimelineView
+              range={model.range}
+              scale={TIMELINE_SCALE[scale]}
+              initialFocus={model.focus}
+              schedules={model.schedules}
+              milestones={model.milestones}
+              projects={model.projects}
+              teamById={NO_TEAMS}
+              dependencies={[]}
+              markLate={share.show_progress}
+              selectedId={sel}
+              onSelect={(id) => setSel((cur) => (cur === id ? null : id))}
+              canEdit={false}
+              onToast={() => {}}
+            />
+          ) : (
+            <RoadmapView
+              range={model.range}
+              scale={scale}
+              initialFocus={model.focus}
+              schedules={model.schedules}
+              projects={model.projects}
+              phases={model.phases}
+              milestones={model.milestones}
+              members={model.members}
+              assigneeMap={model.assigneeMap}
+              markLate={share.show_progress}
+              selectedId={sel}
+              onSelect={(id) => setSel((cur) => (cur === id ? null : id))}
+              onOpenMilestones={() => {}}
+              canEdit={false}
+              readOnly
+              workspaceSlug=""
+              onToast={() => {}}
+            />
+          )}
 
           {picked && (
             <aside className="pub__pick" aria-label="일정 정보">
@@ -338,11 +389,11 @@ function RoadmapShare({ token, res, onList }: { token: string; res: Required<Ope
 function ListShare({
   token,
   res,
-  onRoadmap,
+  onView,
 }: {
   token: string;
   res: Required<OpenShareResult>;
-  onRoadmap?: () => void;
+  onView?: (m: ViewMode) => void;
 }) {
   const { share, items } = res;
   const groups = useMemo(() => {
@@ -364,7 +415,7 @@ function ListShare({
           <TeamSyncLogo className="pub__logo" />
           <span className="chip">읽기 전용</span>
           <span style={{ flex: 1 }} />
-          {onRoadmap && <ViewSwitch mode="list" onChange={onRoadmap} />}
+          {onView && <ViewSwitch mode="list" onChange={onView} />}
         </div>
 
         <article className="pub__card">
