@@ -249,12 +249,21 @@ describe('packLanes — 로드맵 띠 안의 레인 패킹', () => {
     expect(laneCount(bars)).toBe(1);
   });
 
-  it('같은 날에 끝나고 시작하면 날짜가 겹치므로 레인을 나눈다', () => {
+  it('기간이 조금이라도 겹치면 레인을 나눈다', () => {
     const bars = packLanes([
-      sched({ id: 'a', start_at: '2026-01-01T09:00', end_at: '2026-01-10T12:00' }),
-      sched({ id: 'b', start_at: '2026-01-10T15:00', end_at: '2026-01-20T18:00' }),
+      sched({ id: 'a', start_at: '2026-01-01T00:00', end_at: '2026-01-10T23:59' }),
+      sched({ id: 'b', start_at: '2026-01-10T15:00', end_at: '2026-01-20T23:59' }),
     ]);
     expect(laneCount(bars)).toBe(2);
+  });
+
+  it('레인 배정이 실행 환경의 시간대에 따라 달라지지 않는다 (KST 하루 일정)', () => {
+    // KST 하루 경계 = UTC 15:00. UTC 로 돌아가는 서버에서도 같은 줄이어야 한다
+    const bars = packLanes([
+      sched({ id: 'a', start_at: '2026-10-25T15:00:00Z', end_at: '2026-11-09T14:59:00Z' }),
+      sched({ id: 'b', start_at: '2026-11-09T15:00:00Z', end_at: '2026-11-13T14:59:00Z' }),
+    ]);
+    expect(laneCount(bars)).toBe(1);
   });
 
   it('긴 일정이 먼저 위쪽 레인을 차지한다', () => {

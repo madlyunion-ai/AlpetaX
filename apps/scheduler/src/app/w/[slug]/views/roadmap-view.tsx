@@ -618,8 +618,9 @@ export function RoadmapView({
 
   /* ── 상위·하위 연결선 ───────────────────────────────────────────────
      타임라인과 같은 약속 — 상위 일정에서 하위 일정으로 점선 화살표.
-     로드맵은 하위 일정이 대개 상위 기간 안에서 시작하므로 두 갈래로 긋는다.
-       · 하위가 상위가 끝난 뒤에 시작 → 상위 끝에서 꺾어 하위 시작으로
+     화살촉은 되도록 하위 막대의 '시작'(왼쪽 끝)에 꽂는다.
+       · 하위가 상위 뒤에 시작 → 상위 끝 쪽에서 나와 줄 사이 틈으로 건너가
+         하위 시작 쪽 가장자리로 (같은 줄에 바로 붙으면 곧게)
        · 기간이 겹침 → 겹친 구간에서 세로로 내려(올라) 하위 막대 가장자리로
      둘 중 하나라도 지금 기간 밖이라 그리지 않은 막대면 선도 긋지 않는다. */
   const showLinks = useSyncExternalStore(subscribeLinks, readLinks, () => true);
@@ -657,10 +658,23 @@ export function RoadmapView({
       const down = ct >= pt;
       let d: string;
 
-      if (C.x >= pr + 8) {
-        // 뒤따르는 하위 — 상위 끝에서 나와 꺾어 들어간다
-        const mid = pr + Math.min(10, (C.x - pr) / 2);
-        d = `M ${pr} ${py} H ${mid} V ${cy} H ${C.x}`;
+      if (C.x >= pr && ct === pt && C.x - pr < 24) {
+        // 같은 줄에서 바로 이어지는 하위 — 곧게 잇는다
+        d = `M ${pr} ${py} H ${C.x}`;
+      } else if (C.x >= pr) {
+        /*
+         * 뒤따르는 하위. 가로선을 하위 줄의 '가운데'로 끌고 가면 그 줄의 다른
+         * 막대 뒤로 숨어, 엉뚱한 두 막대를 잇는 선처럼 보인다. 그래서 막대가
+         * 없는 줄 사이 틈(하위 막대 바로 위·아래 4px)으로 건너가고, 하위 막대의
+         * 시작 쪽 가장자리로 내려(올라) 꽂는다.
+         */
+        const sameRow = ct === pt;
+        const sx = Math.max(P.x + 4, pr - 6);
+        const ys = sameRow || !down ? pt : pt + BAR_H;
+        const gy = sameRow || down ? ct - 4 : ct + BAR_H + 4;
+        const ex = C.x + Math.min(8, C.w / 2);
+        const ye = sameRow || down ? ct : ct + BAR_H;
+        d = `M ${sx} ${ys} V ${gy} H ${ex} V ${ye}`;
       } else {
         const lo = Math.max(P.x, C.x);
         const hi = Math.min(pr, cr);
@@ -671,8 +685,8 @@ export function RoadmapView({
           const ye = down ? ct : ct + BAR_H;
           d = `M ${sx} ${ys} V ${ye}`;
         } else {
-          // 하위가 상위보다 앞서 끝나는 드문 경우 — 상위 시작에서 왼쪽으로 돌아 하위 끝으로
-          const mid = Math.min(P.x, cr) - 10;
+          // 하위가 상위 시작 전에 끝나는 드문 경우 — 상위 시작에서 왼쪽으로 하위 끝까지
+          const mid = cr + Math.max(4, (P.x - cr) / 2);
           d = `M ${P.x} ${py} H ${mid} V ${cy} H ${cr}`;
         }
       }

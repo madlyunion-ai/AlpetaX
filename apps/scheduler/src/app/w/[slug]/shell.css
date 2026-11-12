@@ -2629,7 +2629,7 @@ img.rm__face {
 .rm__links path {
   fill: none;
   stroke: var(--ink-3);
-  stroke-width: 1.2;
+  stroke-width: 1;
   stroke-dasharray: 4 3;
   opacity: 0.75;
 }

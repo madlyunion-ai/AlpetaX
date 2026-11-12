@@ -165,8 +165,13 @@ export interface PackedBar {
  * 한 띠(band) 안에서 겹치지 않는 일정끼리 같은 레인을 쓰게 묶는다.
  * assignLanes 가 주 단위 7칸 격자용이라면 이쪽은 연속 시간축용이다.
  *
- * 겹침은 날짜로 판단한다 — 앞 일정이 끝난 날 다음 날부터 시작하면 같은 줄에
- * 놓는다. 붙어 있는 막대 사이의 틈은 그리는 쪽이 몇 px 남겨 구분한다.
+ * 기간이 겹치지 않으면 같은 줄에 놓는다 — 하루 일정은 23:59 에 끝나므로
+ * 다음 날 0시에 시작하는 일정은 같은 줄에 붙는다. 붙어 있는 막대 사이의 틈은
+ * 그리는 쪽이 몇 px 남겨 구분한다.
+ *
+ * 날짜(자정)로 자르지 않고 시각을 그대로 비교한다. 자정은 시간대마다 달라서,
+ * 서버(UTC)가 그린 줄과 브라우저(KST)가 그린 줄이 어긋나고 — React 는 그 차이를
+ * 고쳐 주지 않으므로 — 막대와 연결선이 엉뚱한 자리에 남는다.
  */
 export function packLanes(schedules: Schedule[]): PackedBar[] {
   const items = schedules
@@ -178,19 +183,17 @@ export function packLanes(schedules: Schedule[]): PackedBar[] {
         a.schedule.id.localeCompare(b.schedule.id),
     );
 
-  // 각 레인이 현재까지 채워진 마지막 날(그날 0시)
-  const laneEndDay: number[] = [];
+  // 각 레인이 현재까지 채워진 끝 시각
+  const laneEnd: number[] = [];
   const out: PackedBar[] = [];
 
   for (const it of items) {
-    const startDay = +startOfDay(it.startMs);
-    const endDay = +startOfDay(it.endMs);
-    let lane = laneEndDay.findIndex((day) => day < startDay);
+    let lane = laneEnd.findIndex((end) => end < it.startMs);
     if (lane === -1) {
-      laneEndDay.push(endDay);
-      lane = laneEndDay.length - 1;
+      laneEnd.push(it.endMs);
+      lane = laneEnd.length - 1;
     } else {
-      laneEndDay[lane] = endDay;
+      laneEnd[lane] = it.endMs;
     }
     out.push({ ...it, lane });
   }
