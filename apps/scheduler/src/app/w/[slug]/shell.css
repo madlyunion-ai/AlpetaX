@@ -1118,6 +1118,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* 좁은 막대 — 여백을 줄이고 왼쪽부터 채워, 앞 글자가 최대한 남게 한다 */
+.rm__barlabel[data-narrow='true'] {
+  padding: 0 4px;
+  text-align: left;
+  font-size: 11px;
+}
 
 .rm__today {
   position: absolute;

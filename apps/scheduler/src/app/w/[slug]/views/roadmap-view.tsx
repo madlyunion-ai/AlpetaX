@@ -1039,7 +1039,16 @@ export function RoadmapView({
                     }}
                   >
                     <span className="rm__barfill" style={{ width: `${s.progress}%` }} />
-                    {w >= 62 && <span className="rm__barlabel">{s.title}</span>}
+                    {/*
+                      제목은 막대 폭이 허락하는 만큼 보이고 나머지는 말줄임(…).
+                      한 글자도 못 들어갈 만큼 좁을 때만 감춘다 — 좁은 막대는
+                      좌우 여백을 줄여 한 글자라도 더 보이게 한다.
+                    */}
+                    {w >= 24 && (
+                      <span className="rm__barlabel" data-narrow={w < 72}>
+                        {s.title}
+                      </span>
+                    )}
 
                     {/*
                       담당자. 평소에는 감춰 두고 마우스를 올렸을 때만 드러낸다 —

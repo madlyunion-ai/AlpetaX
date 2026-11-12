@@ -83,6 +83,8 @@ export interface ShareItem {
   /** 로드맵 줄을 정하는 열쇠 — 이름·색은 OpenShareResult.projects / phases 에 */
   project_id?: string;
   phase_id?: string;
+  /** 상위 일정. 상위도 함께 공유됐을 때만 온다(0013) — 로드맵 연결선용 */
+  parent_id?: string;
   horizon?: Horizon;
   sort_order?: number;
   start_at: string;

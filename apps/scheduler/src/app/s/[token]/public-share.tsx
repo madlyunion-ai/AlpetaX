@@ -218,7 +218,7 @@ function RoadmapShare({ token, res, onList }: { token: string; res: Required<Ope
       if (ids.length) assigneeMap.set(it.id, ids);
       return {
         id: it.id, workspace_id: '', project_id: it.project_id ?? null, team_id: null,
-        phase_id: it.phase_id ?? null, parent_id: null, title: it.title,
+        phase_id: it.phase_id ?? null, parent_id: it.parent_id ?? null, title: it.title,
         description: it.description ?? null, start_at: it.start_at, end_at: it.end_at,
         all_day: it.all_day, horizon: it.horizon ?? 'mid', horizon_locked: false,
         // 상태·진행률을 감춘 링크는 '예정 0%' 로 그린다 — 지연 강조도 함께 끈다
