@@ -165,10 +165,10 @@ export interface PackedBar {
  * 한 띠(band) 안에서 겹치지 않는 일정끼리 같은 레인을 쓰게 묶는다.
  * assignLanes 가 주 단위 7칸 격자용이라면 이쪽은 연속 시간축용이다.
  *
- * `minGapMs` 는 시각적 여백: 픽셀로 1~2px 붙어 있는 두 바를 같은 레인에 두면
- * 서로 다른 일정이 하나로 읽힌다. 그래서 스케일에 해당하는 최소 간격을 둔다.
+ * 겹침은 날짜로 판단한다 — 앞 일정이 끝난 날 다음 날부터 시작하면 같은 줄에
+ * 놓는다. 붙어 있는 막대 사이의 틈은 그리는 쪽이 몇 px 남겨 구분한다.
  */
-export function packLanes(schedules: Schedule[], minGapMs = 0): PackedBar[] {
+export function packLanes(schedules: Schedule[]): PackedBar[] {
   const items = schedules
     .map((s) => ({ schedule: s, startMs: +new Date(s.start_at), endMs: +new Date(s.end_at) }))
     .sort(
@@ -178,17 +178,19 @@ export function packLanes(schedules: Schedule[], minGapMs = 0): PackedBar[] {
         a.schedule.id.localeCompare(b.schedule.id),
     );
 
-  // 각 레인이 현재까지 채워진 끝 시각
-  const laneEnd: number[] = [];
+  // 각 레인이 현재까지 채워진 마지막 날(그날 0시)
+  const laneEndDay: number[] = [];
   const out: PackedBar[] = [];
 
   for (const it of items) {
-    let lane = laneEnd.findIndex((end) => end + minGapMs <= it.startMs);
+    const startDay = +startOfDay(it.startMs);
+    const endDay = +startOfDay(it.endMs);
+    let lane = laneEndDay.findIndex((day) => day < startDay);
     if (lane === -1) {
-      laneEnd.push(it.endMs);
-      lane = laneEnd.length - 1;
+      laneEndDay.push(endDay);
+      lane = laneEndDay.length - 1;
     } else {
-      laneEnd[lane] = it.endMs;
+      laneEndDay[lane] = endDay;
     }
     out.push({ ...it, lane });
   }

@@ -1058,7 +1058,7 @@
   position: absolute;
   height: 22px;
   border: 1px solid var(--bar-outline);
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 0;
   /*
    * 자르지 않는다. 자르면 막대 위로 걸쳐 둔 담당자 얼굴의 윗부분이 함께
@@ -1107,7 +1107,7 @@
    * 네 귀를 모두 둥글리는 이유 — 왼쪽만 둥글리면 진행률 100% 일 때
    * 오른쪽이 각진 채로 막대의 둥근 모서리 밖으로 삐져나온다.
    */
-  border-radius: 7px;
+  border-radius: 3px;
 }
 .rm__barlabel {
   position: relative;

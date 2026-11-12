@@ -344,9 +344,6 @@ export function RoadmapView({
       (a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name),
     );
 
-    // 바 하나 폭만큼의 시간. 이만큼 안 떨어지면 같은 레인에 붙이지 않는다.
-    const minGapMs = (6 / (pxPerWeek / 7)) * 86_400_000;
-
     const rows: Omit<Band, 'projectStart' | 'projectEnd' | 'projectSpan'>[] = [];
 
     const push = (
@@ -361,7 +358,7 @@ export function RoadmapView({
       if (!list.length) return;
       // 레인 배정은 전체 목록으로 한다 — 보이는 것만으로 계산하면 기간을
       // 옮길 때마다 같은 막대가 다른 줄로 옮겨 다닌다.
-      const bars = packLanes(list, minGapMs);
+      const bars = packLanes(list);
       const lanes = Math.max(1, laneCount(bars));
       rows.push({
         key,
@@ -420,7 +417,7 @@ export function RoadmapView({
       i = j;
     }
     return out;
-  }, [projects, phases, schedules, pxPerWeek]);
+  }, [projects, phases, schedules]);
 
   // 오늘 0시. 이보다 앞서 끝난 일정은 지나간 것으로 흐리게 그린다.
   const todayStart = useMemo(() => startOfDay(new Date()), []);
@@ -811,7 +808,8 @@ export function RoadmapView({
                 // 이미 잡혀 있으므로 자리는 그대로 남는다.
                 if (new Date(s.end_at) < range.start || new Date(s.start_at) > range.end) return null;
                 const x0 = sc.x(s.start_at);
-                const w0 = Math.max(10, sc.x(s.end_at) - x0);
+                // 하루 차이로 이어 붙은 막대가 한 덩어리로 보이지 않게 오른쪽을 2px 남긴다
+                const w0 = Math.max(10, sc.x(s.end_at) - x0 - 2);
                 /*
                  * 끄는 동안에는 저장하지 않고 이 막대만 움직여 보여 준다.
                  * 시작을 끌면 왼쪽 끝이, 끝을 끌면 오른쪽 폭이 따라온다.

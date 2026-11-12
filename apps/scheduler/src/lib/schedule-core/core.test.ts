@@ -240,14 +240,21 @@ describe('packLanes — 로드맵 띠 안의 레인 패킹', () => {
     expect(laneCount(bars)).toBe(3);
   });
 
-  it('minGap 보다 가까이 붙은 두 바는 같은 레인에 두지 않는다', () => {
-    const items = [
-      sched({ id: 'a', start_at: iso('2026-01-01'), end_at: iso('2026-01-31') }),
-      sched({ id: 'b', start_at: iso('2026-02-01'), end_at: iso('2026-02-28') }),
-    ];
-    expect(laneCount(packLanes(items, 0))).toBe(1);
-    // 10일치 간격을 요구하면 하루 차이로 붙은 둘은 갈라진다
-    expect(laneCount(packLanes(items, 10 * 86400000))).toBe(2);
+  it('하루 차이로 이어 붙은 일정도 같은 레인에 둔다', () => {
+    const bars = packLanes([
+      sched({ id: 'a', start_at: '2026-01-01T00:00', end_at: '2026-01-31T23:59' }),
+      sched({ id: 'b', start_at: '2026-02-01T00:00', end_at: '2026-02-28T23:59' }),
+      sched({ id: 'c', start_at: '2026-03-01T00:00', end_at: '2026-03-01T23:59' }),
+    ]);
+    expect(laneCount(bars)).toBe(1);
+  });
+
+  it('같은 날에 끝나고 시작하면 날짜가 겹치므로 레인을 나눈다', () => {
+    const bars = packLanes([
+      sched({ id: 'a', start_at: '2026-01-01T09:00', end_at: '2026-01-10T12:00' }),
+      sched({ id: 'b', start_at: '2026-01-10T15:00', end_at: '2026-01-20T18:00' }),
+    ]);
+    expect(laneCount(bars)).toBe(2);
   });
 
   it('긴 일정이 먼저 위쪽 레인을 차지한다', () => {
